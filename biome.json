@@ -4,9 +4,32 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true
+			"recommended": true,
+			"suspicious": {
+				"noExplicitAny": "off"
+			}
 		}
 	},
+	"overrides": [
+		{
+			"includes": ["src/lib/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noNonNullAssertion": "off"
+					},
+					"suspicious": {
+						"noImplicitAnyLet": "off",
+						"noControlCharactersInRegex": "off",
+						"noShadowRestrictedNames": "off",
+						"noAssignInExpressions": "off",
+						"noTemplateCurlyInString": "off",
+						"useIterableCallbackReturn": "off"
+					}
+				}
+			}
+		}
+	],
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab",
@@ -19,6 +42,6 @@
 		}
 	},
 	"files": {
-		"includes": ["**", "!**/node_modules", "!**/.output", "!**/.wxt", "!**/dist"]
+		"includes": ["**", "!**/node_modules", "!**/.output", "!**/.wxt", "!**/dist", "!.claude"]
 	}
 }
