@@ -21,3 +21,16 @@ export interface Property {
 	value: string
 	type?: string
 }
+
+export interface AllowlistEntry {
+	pattern: string
+	enabled: boolean
+	templateId?: string
+}
+
+export interface ScheduleConfig {
+	enabled: boolean
+	intervalMinutes: number
+	mode: 'focused' | 'all_allowed'
+	allowlist: AllowlistEntry[]
+}
