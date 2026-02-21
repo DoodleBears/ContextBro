@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { TEMPLATE_PRESETS } from '@/lib/template-presets'
 import type { ContextBroTemplate } from '@/lib/types'
 
 interface Props {
@@ -10,27 +11,27 @@ function createId(): string {
 	return crypto.randomUUID()
 }
 
-const DEFAULT_CONTENT_FORMAT = `{
-  "title": "{{title}}",
-  "url": "{{url}}",
-  "content": "{{content}}",
-  "author": "{{author}}",
-  "published": "{{published}}",
-  "domain": "{{domain}}",
-  "description": "{{description}}",
-  "wordCount": {{wordCount}},
-  "clippedAt": "{{date}} {{time}}"
-}`
-
 export function TemplateEditor({ templates, onChange }: Props) {
 	const [editingId, setEditingId] = useState<string | null>(null)
 
-	function addTemplate() {
+	function addBlankTemplate() {
 		const t: ContextBroTemplate = {
 			id: createId(),
 			name: '',
-			contentFormat: DEFAULT_CONTENT_FORMAT,
+			contentFormat: TEMPLATE_PRESETS[0].contentFormat,
 			triggers: [],
+		}
+		onChange([...templates, t])
+		setEditingId(t.id)
+	}
+
+	function addFromPreset(index: number) {
+		const preset = TEMPLATE_PRESETS[index]
+		const t: ContextBroTemplate = {
+			id: createId(),
+			name: preset.name,
+			contentFormat: preset.contentFormat,
+			triggers: preset.triggers ? [...preset.triggers] : [],
 		}
 		onChange([...templates, t])
 		setEditingId(t.id)
@@ -131,13 +132,36 @@ export function TemplateEditor({ templates, onChange }: Props) {
 				</div>
 			))}
 
-			<button
-				type="button"
-				onClick={addTemplate}
-				className="w-full rounded-lg border-2 border-dashed border-gray-200 py-3 text-sm text-gray-400 hover:border-gray-300 hover:text-gray-500"
-			>
-				+ Add template
-			</button>
+			{/* Add template actions */}
+			<div className="flex gap-2">
+				<button
+					type="button"
+					onClick={addBlankTemplate}
+					className="flex-1 rounded-lg border-2 border-dashed border-gray-200 py-3 text-sm text-gray-400 hover:border-gray-300 hover:text-gray-500"
+				>
+					+ Blank template
+				</button>
+				<div className="relative flex-1">
+					<select
+						value=""
+						onChange={(e) => {
+							const idx = Number(e.target.value)
+							if (!Number.isNaN(idx)) addFromPreset(idx)
+						}}
+						className="w-full appearance-none rounded-lg border-2 border-dashed border-gray-200 bg-white py-3 text-center text-sm text-gray-400 hover:border-gray-300 hover:text-gray-500"
+					>
+						<option value="" disabled>
+							+ From preset...
+						</option>
+						{TEMPLATE_PRESETS.map((p, i) => (
+							<option key={p.name} value={i}>
+								{p.name}
+								{p.triggers?.length ? ` (${p.triggers[0]})` : ''}
+							</option>
+						))}
+					</select>
+				</div>
+			</div>
 		</div>
 	)
 }
