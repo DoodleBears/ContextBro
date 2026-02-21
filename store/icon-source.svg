@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Context Bro placeholder icon — replace with designed icon before store submission -->
+  <!-- Export as PNG: 16x16, 32x32, 48x48, 128x128 → public/icon/{size}.png -->
+  <rect width="128" height="128" rx="20" fill="#2563eb"/>
+  <text x="64" y="90" font-family="system-ui" font-size="84" font-weight="bold" fill="white" text-anchor="middle">C</text>
+</svg>
