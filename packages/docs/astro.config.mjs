@@ -3,7 +3,7 @@ import starlight from '@astrojs/starlight'
 import starlightThemeObsidian from 'starlight-theme-obsidian'
 
 export default defineConfig({
-	site: 'https://contextbro.com',
+	site: 'https://contextbro.app',
 	vite: {
 		css: {
 			devSourcemap: false,
