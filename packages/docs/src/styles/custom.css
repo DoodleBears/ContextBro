@@ -11,10 +11,10 @@
 
 /* ---------- Dark mode (Starlight default) ---------- */
 :root {
-  /* Accent — Context Bro blue: oklch(0.55 0.16 250) */
-  --sl-color-accent-low: oklch(0.25 0.06 250);
-  --sl-color-accent: oklch(0.55 0.16 250);
-  --sl-color-accent-high: oklch(0.85 0.06 250);
+  /* Accent — Context Bro blue #2E49E1: oklch(0.45 0.27 264) */
+  --sl-color-accent-low: oklch(0.25 0.08 264);
+  --sl-color-accent: oklch(0.45 0.27 264);
+  --sl-color-accent-high: oklch(0.85 0.06 264);
 
   /* Gray scale */
   --sl-color-white: oklch(0.985 0 0);
@@ -36,10 +36,10 @@
 
 /* ---------- Light mode ---------- */
 :root[data-theme='light'] {
-  /* Accent — Context Bro light blue */
-  --sl-color-accent-low: oklch(0.94 0.04 250);
-  --sl-color-accent: oklch(0.55 0.18 250);
-  --sl-color-accent-high: oklch(0.30 0.08 250);
+  /* Accent — Context Bro light #2E49E1 */
+  --sl-color-accent-low: oklch(0.94 0.04 264);
+  --sl-color-accent: oklch(0.45 0.27 264);
+  --sl-color-accent-high: oklch(0.30 0.10 264);
 
   /* Gray scale — INVERTED: dark → light */
   --sl-color-white: oklch(0.145 0 0);

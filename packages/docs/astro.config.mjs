@@ -127,6 +127,7 @@ export default defineConfig({
 			components: {
 				PageSidebar: './src/components/PageSidebar.astro',
 			},
+			favicon: '/favicon.png',
 			customCss: ['./src/styles/custom.css'],
 			lastUpdated: true,
 			tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
