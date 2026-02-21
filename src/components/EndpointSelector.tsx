@@ -1,3 +1,11 @@
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select'
+import { useLocale } from '@/lib/i18n'
 import type { Endpoint } from '@/lib/types'
 
 interface Props {
@@ -7,23 +15,25 @@ interface Props {
 }
 
 export function EndpointSelector({ endpoints, selectedId, onChange }: Props) {
+	const { t } = useLocale()
 	const enabled = endpoints.filter((e) => e.enabled)
 
 	if (enabled.length === 0) {
-		return <span className="text-xs text-gray-400 italic">No endpoints configured</span>
+		return <span className="text-xs text-muted-foreground italic">{t('popup.noEndpoints')}</span>
 	}
 
 	return (
-		<select
-			value={selectedId}
-			onChange={(e) => onChange(e.target.value)}
-			className="w-full rounded border border-gray-200 bg-white px-2 py-1 text-sm focus:border-blue-400 focus:outline-none"
-		>
-			{enabled.map((ep) => (
-				<option key={ep.id} value={ep.id}>
-					{ep.name}
-				</option>
-			))}
-		</select>
+		<Select value={selectedId} onValueChange={onChange}>
+			<SelectTrigger className="h-8 text-xs">
+				<SelectValue />
+			</SelectTrigger>
+			<SelectContent>
+				{enabled.map((ep) => (
+					<SelectItem key={ep.id} value={ep.id}>
+						{ep.name || t('endpoints.unnamed')}
+					</SelectItem>
+				))}
+			</SelectContent>
+		</Select>
 	)
 }

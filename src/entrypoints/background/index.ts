@@ -1,9 +1,12 @@
 import type { ChatBatch, StreamInfo, TranscriptChunk } from '@/lib/adapters/types'
+import { matchesSiteRules } from '@/lib/allowlist'
 import { sendToEndpoint } from '@/lib/api/send'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
-import { initScheduler, updateScheduleConfig } from '@/lib/scheduler'
+import { migrateV1ToV2 } from '@/lib/migration'
+import { initScheduler, updateGlobalSettings, updateSiteRules } from '@/lib/scheduler'
+import { getEndpoints as getEndpointsFromStorage, getSiteRules } from '@/lib/storage'
 import { compileTemplate } from '@/lib/template-engine/compiler'
-import type { ContextBroTemplate, Endpoint, ScheduleConfig } from '@/lib/types'
+import type { ContextBroTemplate, Endpoint, GlobalSettings, SiteRule } from '@/lib/types'
 
 const DEFAULT_TEMPLATE: ContextBroTemplate = {
 	id: 'default',
@@ -23,6 +26,11 @@ const DEFAULT_TEMPLATE: ContextBroTemplate = {
 
 export default defineBackground(() => {
 	console.log('Context Bro background service worker started')
+
+	// Run migration before initializing scheduler
+	migrateV1ToV2().then((migrated) => {
+		if (migrated) console.debug('[background] Storage migration completed')
+	})
 
 	// Initialize the scheduled extraction system
 	initScheduler({
@@ -81,8 +89,13 @@ export default defineBackground(() => {
 			return true
 		}
 
-		if (message.action === 'updateSchedule') {
-			updateScheduleConfig(message.config as ScheduleConfig).then(sendResponse)
+		if (message.action === 'updateSiteRules') {
+			updateSiteRules(message.siteRules as SiteRule[]).then(sendResponse)
+			return true
+		}
+
+		if (message.action === 'updateGlobalSettings') {
+			updateGlobalSettings(message.globalSettings as GlobalSettings).then(sendResponse)
 			return true
 		}
 
@@ -111,16 +124,38 @@ export default defineBackground(() => {
 })
 
 /**
- * Extract page content, compile template, and send to the default endpoint.
+ * Extract page content, compile template, and send to configured endpoints.
+ * Looks up matching SiteRule for multi-endpoint support, falls back to first enabled.
  */
 async function shareFromTab(tabId: number): Promise<void> {
 	try {
-		// Ensure content script is injected
 		await ensureContentScript(tabId)
 
+		const tab = await browser.tabs.get(tabId)
+		const url = tab.url || ''
 		const endpoints = await getEndpoints()
-		const defaultEndpoint = endpoints.find((e) => e.enabled)
 
+		// Try matching a site rule for multi-endpoint
+		const siteRules = await getSiteRules()
+		const matchedRule = url ? matchesSiteRules(url, siteRules) : null
+
+		if (matchedRule && matchedRule.endpointIds.length > 0) {
+			const targetEndpoints = endpoints.filter(
+				(e) => e.enabled && matchedRule.endpointIds.includes(e.id),
+			)
+			if (targetEndpoints.length > 0) {
+				const results = await Promise.allSettled(
+					targetEndpoints.map((ep) => handleShare(tabId, ep.id, matchedRule.templateId)),
+				)
+				for (const r of results) {
+					if (r.status === 'rejected') console.error('Share failed:', r.reason)
+				}
+				return
+			}
+		}
+
+		// Fallback: send to first enabled endpoint
+		const defaultEndpoint = endpoints.find((e) => e.enabled)
 		if (!defaultEndpoint) {
 			console.error('No enabled endpoint configured')
 			return
@@ -223,8 +258,7 @@ async function ensureContentScript(tabId: number): Promise<void> {
 // --- Storage helpers ---
 
 async function getEndpoints(): Promise<Endpoint[]> {
-	const result = await browser.storage.local.get('endpoints')
-	return (result.endpoints as Endpoint[]) || []
+	return getEndpointsFromStorage()
 }
 
 async function getTemplate(templateId?: string): Promise<ContextBroTemplate> {

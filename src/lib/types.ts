@@ -22,12 +22,29 @@ export interface Property {
 	type?: string
 }
 
+export interface SiteRule {
+	id: string
+	pattern: string
+	enabled: boolean
+	templateId?: string
+	endpointIds: string[]
+	autoShare: boolean
+	intervalMinutes: number
+}
+
+export interface GlobalSettings {
+	scheduleMode: 'focused' | 'all_allowed'
+	locale: 'en' | 'zh' | 'ja'
+}
+
+/** @deprecated Use SiteRule instead */
 export interface AllowlistEntry {
 	pattern: string
 	enabled: boolean
 	templateId?: string
 }
 
+/** @deprecated Use SiteRule[] + GlobalSettings instead */
 export interface ScheduleConfig {
 	enabled: boolean
 	intervalMinutes: number

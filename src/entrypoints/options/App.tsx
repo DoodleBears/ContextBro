@@ -1,32 +1,39 @@
 import '@/assets/tailwind.css'
+import { Check, Globe, Keyboard, Settings } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { AllowlistEditor } from '@/components/AllowlistEditor'
 import { EndpointEditor } from '@/components/EndpointEditor'
-import { ScheduleEditor } from '@/components/ScheduleEditor'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { SiteRuleEditor } from '@/components/SiteRuleEditor'
 import { TemplateEditor } from '@/components/TemplateEditor'
-import type { ContextBroTemplate, Endpoint, ScheduleConfig } from '@/lib/types'
+import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useLocale } from '@/lib/i18n'
+import type { ContextBroTemplate, Endpoint, GlobalSettings, SiteRule } from '@/lib/types'
 
-type Tab = 'endpoints' | 'templates' | 'allowlist' | 'schedule' | 'general'
-
-const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
-	enabled: false,
-	intervalMinutes: 15,
-	mode: 'focused',
-	allowlist: [],
+const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
+	scheduleMode: 'focused',
+	locale: 'en',
 }
 
 export default function App() {
-	const [activeTab, setActiveTab] = useState<Tab>('endpoints')
+	const { t } = useLocale()
+	const [siteRules, setSiteRules] = useState<SiteRule[]>([])
 	const [endpoints, setEndpoints] = useState<Endpoint[]>([])
 	const [templates, setTemplates] = useState<ContextBroTemplate[]>([])
-	const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig>(DEFAULT_SCHEDULE_CONFIG)
+	const [globalSettings, setGlobalSettings] = useState<GlobalSettings>(DEFAULT_GLOBAL_SETTINGS)
 	const [saved, setSaved] = useState(false)
 
 	const loadSettings = useCallback(async () => {
-		const result = await browser.storage.local.get(['endpoints', 'templates', 'scheduleConfig'])
+		const result = await browser.storage.local.get([
+			'siteRules',
+			'endpoints',
+			'templates',
+			'globalSettings',
+		])
+		setSiteRules((result.siteRules as SiteRule[]) || [])
 		setEndpoints((result.endpoints as Endpoint[]) || [])
 		setTemplates((result.templates as ContextBroTemplate[]) || [])
-		setScheduleConfig((result.scheduleConfig as ScheduleConfig) || DEFAULT_SCHEDULE_CONFIG)
+		setGlobalSettings((result.globalSettings as GlobalSettings) || DEFAULT_GLOBAL_SETTINGS)
 	}, [])
 
 	useEffect(() => {
@@ -34,137 +41,104 @@ export default function App() {
 	}, [loadSettings])
 
 	async function save() {
-		await browser.storage.local.set({ endpoints, templates, scheduleConfig })
+		await browser.storage.local.set({ siteRules, endpoints, templates, globalSettings })
 
-		// Notify background to sync the alarm
-		browser.runtime.sendMessage({ action: 'updateSchedule', config: scheduleConfig })
+		// Notify background to sync scheduler
+		browser.runtime.sendMessage({ action: 'updateSiteRules', siteRules })
+		browser.runtime.sendMessage({ action: 'updateGlobalSettings', globalSettings })
 
 		setSaved(true)
 		setTimeout(() => setSaved(false), 2000)
 	}
 
-	function updateAllowlist(allowlist: ScheduleConfig['allowlist']) {
-		setScheduleConfig({ ...scheduleConfig, allowlist })
-	}
-
-	const tabs: { id: Tab; label: string }[] = [
-		{ id: 'endpoints', label: 'Endpoints' },
-		{ id: 'templates', label: 'Templates' },
-		{ id: 'allowlist', label: 'Allowlist' },
-		{ id: 'schedule', label: 'Schedule' },
-		{ id: 'general', label: 'General' },
-	]
-
 	return (
-		<div className="mx-auto max-w-2xl p-6">
+		<div className="mx-auto min-h-screen max-w-4xl bg-background p-6">
+			{/* Header */}
 			<div className="mb-6 flex items-center justify-between">
-				<h1 className="text-xl font-bold text-gray-900">Context Bro Settings</h1>
-				<div className="flex items-center gap-2">
-					{saved && <span className="text-xs text-green-600">Saved</span>}
-					<button
-						type="button"
-						onClick={save}
-						className="rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-					>
-						Save
-					</button>
+				<h1 className="text-xl font-bold text-foreground">{t('settings.title')}</h1>
+				<div className="flex items-center gap-3">
+					<LanguageSwitcher />
+					<Button onClick={save} size="sm">
+						{saved ? (
+							<>
+								<Check className="h-4 w-4" />
+								{t('settings.saved')}
+							</>
+						) : (
+							t('settings.save')
+						)}
+					</Button>
 				</div>
 			</div>
 
-			{/* Tab navigation */}
-			<div className="mb-6 border-b border-gray-200">
-				<nav className="-mb-px flex gap-6">
-					{tabs.map((tab) => (
-						<button
-							key={tab.id}
-							type="button"
-							onClick={() => setActiveTab(tab.id)}
-							className={`border-b-2 pb-2 text-sm font-medium ${
-								activeTab === tab.id
-									? 'border-blue-600 text-blue-600'
-									: 'border-transparent text-gray-500 hover:text-gray-700'
-							}`}
-						>
-							{tab.label}
-						</button>
-					))}
-				</nav>
-			</div>
+			{/* Tabs */}
+			<Tabs defaultValue="sites">
+				<TabsList className="mb-6">
+					<TabsTrigger value="sites">
+						<Globe className="h-3.5 w-3.5 mr-1.5" />
+						{t('tabs.sites')}
+					</TabsTrigger>
+					<TabsTrigger value="endpoints">
+						<Settings className="h-3.5 w-3.5 mr-1.5" />
+						{t('tabs.endpoints')}
+					</TabsTrigger>
+					<TabsTrigger value="templates">{t('tabs.templates')}</TabsTrigger>
+					<TabsTrigger value="general">{t('tabs.general')}</TabsTrigger>
+				</TabsList>
 
-			{/* Tab content */}
-			{activeTab === 'endpoints' && (
-				<div>
-					<p className="mb-4 text-sm text-gray-500">
-						Configure API endpoints where page context will be sent.
-					</p>
-					<EndpointEditor endpoints={endpoints} onChange={setEndpoints} />
-				</div>
-			)}
-
-			{activeTab === 'templates' && (
-				<div>
-					<p className="mb-4 text-sm text-gray-500">
-						Define templates that control the JSON payload shape. Use {'{{variables}}'} for dynamic
-						values.
-					</p>
-					<TemplateEditor templates={templates} onChange={setTemplates} />
-				</div>
-			)}
-
-			{activeTab === 'allowlist' && (
-				<div>
-					<p className="mb-4 text-sm text-gray-500">
-						Domains in the allowlist can be automatically shared on a schedule. Manual clip and
-						selection sharing work on all domains.
-					</p>
-					<AllowlistEditor
-						allowlist={scheduleConfig.allowlist}
+				<TabsContent value="sites">
+					<p className="mb-4 text-sm text-muted-foreground">{t('sites.description')}</p>
+					<SiteRuleEditor
+						siteRules={siteRules}
+						endpoints={endpoints}
 						templates={templates}
-						onChange={updateAllowlist}
+						globalSettings={globalSettings}
+						onRulesChange={setSiteRules}
+						onSettingsChange={setGlobalSettings}
 					/>
-				</div>
-			)}
+				</TabsContent>
 
-			{activeTab === 'schedule' && (
-				<div>
-					<p className="mb-4 text-sm text-gray-500">
-						Configure automatic sharing of allowlisted pages at regular intervals.
-					</p>
-					<ScheduleEditor config={scheduleConfig} onChange={setScheduleConfig} />
-				</div>
-			)}
+				<TabsContent value="endpoints">
+					<p className="mb-4 text-sm text-muted-foreground">{t('endpoints.description')}</p>
+					<EndpointEditor endpoints={endpoints} onChange={setEndpoints} />
+				</TabsContent>
 
-			{activeTab === 'general' && (
-				<div className="space-y-4">
-					<div className="rounded-lg border border-gray-200 p-4">
-						<h3 className="mb-2 text-sm font-medium text-gray-900">Keyboard shortcut</h3>
-						<p className="text-sm text-gray-500">
-							Press <kbd className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">Ctrl+Shift+K</kbd>{' '}
-							(or <kbd className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">Cmd+Shift+K</kbd> on
-							Mac) to share the current selection.
-						</p>
-						<p className="mt-2 text-xs text-gray-400">
-							You can customize this shortcut in your browser&apos;s extension settings.
-						</p>
+				<TabsContent value="templates">
+					<p className="mb-4 text-sm text-muted-foreground">{t('templates.description')}</p>
+					<TemplateEditor templates={templates} onChange={setTemplates} />
+				</TabsContent>
+
+				<TabsContent value="general">
+					<div className="space-y-4">
+						<div className="rounded-lg border p-4">
+							<div className="flex items-center gap-2 mb-2">
+								<Keyboard className="h-4 w-4 text-muted-foreground" />
+								<h3 className="text-sm font-medium">{t('general.keyboard')}</h3>
+							</div>
+							<p className="text-sm text-muted-foreground">
+								{t('general.keyboardDesc', { shortcut: 'Ctrl+Shift+K / Cmd+Shift+K' })}
+							</p>
+							<p className="mt-2 text-xs text-muted-foreground">{t('general.keyboardCustomize')}</p>
+						</div>
+
+						<div className="rounded-lg border p-4">
+							<h3 className="mb-2 text-sm font-medium">{t('general.about')}</h3>
+							<p className="text-sm text-muted-foreground">{t('general.aboutDesc')}</p>
+							<p className="mt-1 text-xs text-muted-foreground">{t('general.aboutTagline')}</p>
+							<p className="mt-2">
+								<a
+									href={browser.runtime.getURL('/privacy.html' as '/options.html')}
+									target="_blank"
+									rel="noreferrer"
+									className="text-xs text-primary hover:underline"
+								>
+									{t('general.privacy')}
+								</a>
+							</p>
+						</div>
 					</div>
-
-					<div className="rounded-lg border border-gray-200 p-4">
-						<h3 className="mb-2 text-sm font-medium text-gray-900">About</h3>
-						<p className="text-sm text-gray-500">Context Bro — Web Clipper for AI Agents.</p>
-						<p className="mt-1 text-xs text-gray-400">Your AI&apos;s eyes on the web.</p>
-						<p className="mt-2">
-							<a
-								href={browser.runtime.getURL('/privacy.html' as '/options.html')}
-								target="_blank"
-								rel="noreferrer"
-								className="text-xs text-blue-600 hover:underline"
-							>
-								Privacy Policy
-							</a>
-						</p>
-					</div>
-				</div>
-			)}
+				</TabsContent>
+			</Tabs>
 		</div>
 	)
 }

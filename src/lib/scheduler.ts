@@ -1,12 +1,19 @@
-import { matchesAllowlist } from '@/lib/allowlist'
+import { matchesSiteRules } from '@/lib/allowlist'
 import { sendToEndpoint } from '@/lib/api/send'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
 import { hasContentChanged } from '@/lib/dedup'
+import {
+	getGlobalSettings,
+	getLastSharedAt,
+	getSiteRules,
+	setGlobalSettings as saveGlobalSettings,
+	setLastSharedAt,
+	setSiteRules,
+} from '@/lib/storage'
 import { compileTemplate } from '@/lib/template-engine/compiler'
-import type { ContextBroTemplate, Endpoint, ScheduleConfig } from '@/lib/types'
+import type { ContextBroTemplate, Endpoint, GlobalSettings, SiteRule } from '@/lib/types'
 
 const ALARM_NAME = 'context-bro-schedule'
-const SCHEDULE_STORAGE_KEY = 'scheduleConfig'
 
 /**
  * Initialize the scheduler — call once from the background service worker.
@@ -17,85 +24,99 @@ export function initScheduler(deps: {
 	getEndpoints: () => Promise<Endpoint[]>
 	getTemplate: (templateId?: string) => Promise<ContextBroTemplate>
 }): void {
-	// Listen for alarm ticks
 	browser.alarms.onAlarm.addListener(async (alarm) => {
 		if (alarm.name !== ALARM_NAME) return
 		await runScheduledExtraction(deps)
 	})
 
-	// Restore alarm on service worker startup (alarms persist across restarts)
-	getScheduleConfig().then((config) => {
-		if (config?.enabled) {
-			syncAlarm(config)
-		}
+	// Restore alarm on service worker startup
+	getSiteRules().then((rules) => {
+		syncAlarm(rules)
 	})
 }
 
 /**
- * Update the schedule config and sync the alarm.
+ * Update site rules and sync the alarm.
  */
-export async function updateScheduleConfig(config: ScheduleConfig): Promise<void> {
-	await browser.storage.local.set({ [SCHEDULE_STORAGE_KEY]: config })
+export async function updateSiteRules(rules: SiteRule[]): Promise<void> {
+	await setSiteRules(rules)
+	await syncAlarm(rules)
+}
 
-	if (config.enabled) {
-		await syncAlarm(config)
-	} else {
+/**
+ * Update global settings.
+ */
+export async function updateGlobalSettings(settings: GlobalSettings): Promise<void> {
+	await saveGlobalSettings(settings)
+}
+
+/**
+ * Create or update the Chrome alarm based on the minimum interval across all active auto-share rules.
+ */
+async function syncAlarm(rules: SiteRule[]): Promise<void> {
+	const activeRules = rules.filter((r) => r.enabled && r.autoShare)
+
+	if (activeRules.length === 0) {
 		await browser.alarms.clear(ALARM_NAME)
+		return
 	}
-}
 
-/**
- * Get the current schedule config from storage.
- */
-export async function getScheduleConfig(): Promise<ScheduleConfig | null> {
-	const result = await browser.storage.local.get(SCHEDULE_STORAGE_KEY)
-	return (result[SCHEDULE_STORAGE_KEY] as ScheduleConfig) || null
-}
+	const minInterval = Math.max(1, Math.min(...activeRules.map((r) => r.intervalMinutes)))
 
-/**
- * Create or update the Chrome alarm to match the config interval.
- */
-async function syncAlarm(config: ScheduleConfig): Promise<void> {
 	await browser.alarms.clear(ALARM_NAME)
 	browser.alarms.create(ALARM_NAME, {
-		periodInMinutes: config.intervalMinutes,
+		periodInMinutes: minInterval,
 	})
 }
 
 /**
  * Core scheduled extraction logic.
- * Queries tabs → filters by allowlist → dedup → extract → compile → POST.
+ * Queries tabs → matches site rules → checks per-rule interval → dedup → extract → compile → POST to all configured endpoints.
  */
 async function runScheduledExtraction(deps: {
 	ensureContentScript: (tabId: number) => Promise<void>
 	getEndpoints: () => Promise<Endpoint[]>
 	getTemplate: (templateId?: string) => Promise<ContextBroTemplate>
 }): Promise<void> {
-	const config = await getScheduleConfig()
-	if (!config?.enabled || config.allowlist.length === 0) return
+	const rules = await getSiteRules()
+	const activeRules = rules.filter((r) => r.enabled && r.autoShare)
+	if (activeRules.length === 0) return
 
-	const endpoints = await deps.getEndpoints()
-	const defaultEndpoint = endpoints.find((e) => e.enabled)
-	if (!defaultEndpoint) {
-		console.debug('[scheduler] No enabled endpoint, skipping')
-		return
-	}
+	const globalSettings = await getGlobalSettings()
+	const allEndpoints = await deps.getEndpoints()
+	const lastSharedAt = await getLastSharedAt()
+	const now = Date.now()
 
-	// Query tabs based on mode
+	// Query tabs based on global schedule mode
 	const tabs =
-		config.mode === 'focused'
+		globalSettings.scheduleMode === 'focused'
 			? await browser.tabs.query({ active: true, currentWindow: true })
 			: await browser.tabs.query({})
 
+	let lastSharedUpdated = false
+
 	for (const tab of tabs) {
 		if (!tab.id || !tab.url) continue
-
-		// Skip non-http(s) tabs (chrome://, about://, etc.)
 		if (!tab.url.startsWith('http://') && !tab.url.startsWith('https://')) continue
 
-		// Check allowlist
-		const match = matchesAllowlist(tab.url, config.allowlist)
-		if (!match) continue
+		// Check if tab matches any active site rule
+		const matchedRule = matchesSiteRules(tab.url, activeRules)
+		if (!matchedRule) continue
+
+		// Check per-rule interval
+		const lastTime = lastSharedAt[matchedRule.pattern] || 0
+		if (now - lastTime < matchedRule.intervalMinutes * 60_000) continue
+
+		// Resolve target endpoints
+		const targetEndpoints =
+			matchedRule.endpointIds.length > 0
+				? allEndpoints.filter((e) => e.enabled && matchedRule.endpointIds.includes(e.id))
+				: allEndpoints.filter((e) => e.enabled).slice(0, 1)
+
+		if (targetEndpoints.length === 0) {
+			console.debug(`[scheduler] No endpoints for rule: ${matchedRule.pattern}`)
+			continue
+		}
 
 		try {
 			await deps.ensureContentScript(tab.id)
@@ -111,19 +132,37 @@ async function runScheduledExtraction(deps: {
 			}
 
 			const variables = buildVariables(response, tab.url)
-
-			// Use allowlist-bound template, or find by trigger, or default
-			const template = await deps.getTemplate(match.templateId)
+			const template = await deps.getTemplate(matchedRule.templateId)
 			const compiled = await compileTemplate(tab.id, template.contentFormat, variables, tab.url)
 
-			const result = await sendToEndpoint(defaultEndpoint, compiled)
-			if (result.ok) {
-				console.debug(`[scheduler] Sent: ${tab.url}`)
-			} else {
-				console.error(`[scheduler] Failed ${tab.url}: ${result.status} ${result.statusText}`)
+			// Send to all configured endpoints (partial failure tolerant)
+			const results = await Promise.allSettled(
+				targetEndpoints.map((ep) => sendToEndpoint(ep, compiled)),
+			)
+
+			for (let i = 0; i < results.length; i++) {
+				const r = results[i]
+				if (r.status === 'fulfilled' && r.value.ok) {
+					console.debug(`[scheduler] Sent ${tab.url} → ${targetEndpoints[i].name}`)
+				} else {
+					const reason =
+						r.status === 'rejected' ? r.reason : `${r.value.status} ${r.value.statusText}`
+					console.error(`[scheduler] Failed ${tab.url} → ${targetEndpoints[i].name}: ${reason}`)
+				}
+			}
+
+			// Mark as shared if at least one endpoint succeeded
+			const anySuccess = results.some((r) => r.status === 'fulfilled' && r.value.ok)
+			if (anySuccess) {
+				lastSharedAt[matchedRule.pattern] = now
+				lastSharedUpdated = true
 			}
 		} catch (error) {
 			console.error(`[scheduler] Error processing ${tab.url}:`, error)
 		}
+	}
+
+	if (lastSharedUpdated) {
+		await setLastSharedAt(lastSharedAt)
 	}
 }

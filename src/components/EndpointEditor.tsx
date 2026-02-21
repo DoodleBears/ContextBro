@@ -1,4 +1,11 @@
+import { Plus, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { useLocale } from '@/lib/i18n'
 import type { Endpoint } from '@/lib/types'
 
 interface Props {
@@ -6,15 +13,12 @@ interface Props {
 	onChange: (endpoints: Endpoint[]) => void
 }
 
-function createId(): string {
-	return crypto.randomUUID()
-}
-
 function createEndpoint(): Endpoint {
-	return { id: createId(), name: '', url: '', headers: {}, enabled: true }
+	return { id: crypto.randomUUID(), name: '', url: '', headers: {}, enabled: true }
 }
 
 export function EndpointEditor({ endpoints, onChange }: Props) {
+	const { t } = useLocale()
 	const [editingId, setEditingId] = useState<string | null>(null)
 	const [testStatus, setTestStatus] = useState<Record<string, string>>({})
 
@@ -45,8 +49,7 @@ export function EndpointEditor({ endpoints, onChange }: Props) {
 	function addHeader(endpointId: string) {
 		const ep = endpoints.find((e) => e.id === endpointId)
 		if (!ep) return
-		const headers = { ...ep.headers, '': '' }
-		updateEndpoint(endpointId, { headers })
+		updateEndpoint(endpointId, { headers: { ...ep.headers, '': '' } })
 	}
 
 	function removeHeader(endpointId: string, key: string) {
@@ -58,7 +61,7 @@ export function EndpointEditor({ endpoints, onChange }: Props) {
 	}
 
 	async function testEndpoint(ep: Endpoint) {
-		setTestStatus({ ...testStatus, [ep.id]: 'testing...' })
+		setTestStatus({ ...testStatus, [ep.id]: t('endpoints.testing') })
 		try {
 			const response = await fetch(ep.url, {
 				method: 'POST',
@@ -80,125 +83,122 @@ export function EndpointEditor({ endpoints, onChange }: Props) {
 	return (
 		<div className="space-y-4">
 			{endpoints.map((ep) => (
-				<div key={ep.id} className="rounded-lg border border-gray-200 p-4">
-					<div className="mb-3 flex items-center justify-between">
-						<div className="flex items-center gap-2">
-							<input
-								type="checkbox"
+				<Card key={ep.id} className="p-4">
+					<div className="flex items-center justify-between mb-3">
+						<div className="flex items-center gap-3">
+							<Switch
 								checked={ep.enabled}
-								onChange={(e) => updateEndpoint(ep.id, { enabled: e.target.checked })}
-								className="rounded"
+								onCheckedChange={(checked) => updateEndpoint(ep.id, { enabled: checked })}
 							/>
 							{editingId === ep.id ? (
-								<input
-									type="text"
+								<Input
 									value={ep.name}
 									onChange={(e) => updateEndpoint(ep.id, { name: e.target.value })}
-									placeholder="Endpoint name"
-									className="rounded border border-gray-200 px-2 py-1 text-sm"
+									placeholder={t('endpoints.name')}
+									className="h-8 w-48 text-sm"
 								/>
 							) : (
 								<button
 									type="button"
 									onClick={() => setEditingId(ep.id)}
-									className="text-sm font-medium"
+									className="text-sm font-medium hover:text-primary transition-colors"
 								>
-									{ep.name || 'Unnamed endpoint'}
+									{ep.name || t('endpoints.unnamed')}
 								</button>
 							)}
 						</div>
-						<button
-							type="button"
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-7 w-7 text-muted-foreground hover:text-destructive"
 							onClick={() => removeEndpoint(ep.id)}
-							className="text-xs text-red-500 hover:text-red-700"
 						>
-							Remove
-						</button>
+							<Trash2 className="h-3.5 w-3.5" />
+						</Button>
 					</div>
 
 					{editingId === ep.id && (
 						<div className="space-y-3">
 							<div>
-								<span className="mb-1 block text-xs font-medium text-gray-500">URL</span>
-								<input
+								<Label className="text-xs text-muted-foreground">{t('endpoints.url')}</Label>
+								<Input
 									type="url"
 									value={ep.url}
 									onChange={(e) => updateEndpoint(ep.id, { url: e.target.value })}
-									placeholder="https://api.example.com/context"
-									className="w-full rounded border border-gray-200 px-2 py-1.5 text-sm"
+									placeholder={t('endpoints.urlPlaceholder')}
+									className="mt-1 text-sm"
 								/>
 							</div>
 
 							<div>
-								<div className="mb-1 flex items-center justify-between">
-									<span className="text-xs font-medium text-gray-500">Headers</span>
-									<button
-										type="button"
+								<div className="flex items-center justify-between mb-1">
+									<Label className="text-xs text-muted-foreground">{t('endpoints.headers')}</Label>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-6 text-xs"
 										onClick={() => addHeader(ep.id)}
-										className="text-xs text-blue-600 hover:text-blue-800"
 									>
-										+ Add header
-									</button>
+										<Plus className="h-3 w-3" />
+										{t('endpoints.addHeader')}
+									</Button>
 								</div>
 								{Object.entries(ep.headers).map(([key, value]) => (
 									<div key={key} className="mb-1 flex gap-1">
-										<input
-											type="text"
+										<Input
 											value={key}
 											onChange={(e) => updateHeader(ep.id, key, e.target.value, value)}
-											placeholder="Header name"
-											className="w-1/3 rounded border border-gray-200 px-2 py-1 text-xs"
+											placeholder={t('endpoints.headerName')}
+											className="w-1/3 h-8 text-xs"
 										/>
-										<input
-											type="text"
+										<Input
 											value={value}
 											onChange={(e) => updateHeader(ep.id, key, key, e.target.value)}
-											placeholder="Value"
-											className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs"
+											placeholder={t('endpoints.headerValue')}
+											className="flex-1 h-8 text-xs"
 										/>
-										<button
-											type="button"
+										<Button
+											variant="ghost"
+											size="icon"
+											className="h-8 w-8 text-muted-foreground hover:text-destructive"
 											onClick={() => removeHeader(ep.id, key)}
-											className="px-1 text-xs text-red-400 hover:text-red-600"
 										>
-											x
-										</button>
+											<X className="h-3 w-3" />
+										</Button>
 									</div>
 								))}
 							</div>
 
 							<div className="flex items-center gap-2">
-								<button
-									type="button"
+								<Button
+									variant="outline"
+									size="sm"
 									onClick={() => testEndpoint(ep)}
 									disabled={!ep.url}
-									className="rounded border border-gray-200 px-3 py-1 text-xs hover:bg-gray-50 disabled:opacity-50"
 								>
-									Test
-								</button>
+									{t('endpoints.test')}
+								</Button>
 								{testStatus[ep.id] && (
-									<span className="text-xs text-gray-500">{testStatus[ep.id]}</span>
+									<span className="text-xs text-muted-foreground">{testStatus[ep.id]}</span>
 								)}
-								<button
-									type="button"
+								<Button
+									variant="ghost"
+									size="sm"
+									className="ml-auto"
 									onClick={() => setEditingId(null)}
-									className="ml-auto text-xs text-gray-500 hover:text-gray-700"
 								>
-									Done
-								</button>
+									{t('common.done')}
+								</Button>
 							</div>
 						</div>
 					)}
-				</div>
+				</Card>
 			))}
 
-			<button
-				type="button"
-				onClick={addEndpoint}
-				className="w-full rounded-lg border-2 border-dashed border-gray-200 py-3 text-sm text-gray-400 hover:border-gray-300 hover:text-gray-500"
-			>
-				+ Add endpoint
-			</button>
+			<Button variant="outline" className="w-full border-dashed" onClick={addEndpoint}>
+				<Plus className="h-4 w-4" />
+				{t('endpoints.add')}
+			</Button>
 		</div>
 	)
 }

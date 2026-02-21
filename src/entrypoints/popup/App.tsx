@@ -1,9 +1,14 @@
 import '@/assets/tailwind.css'
+import { Settings } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { EndpointSelector } from '@/components/EndpointSelector'
 import { JsonPreview } from '@/components/JsonPreview'
 import { TemplateSelector } from '@/components/TemplateSelector'
-import type { ContextBroTemplate, Endpoint } from '@/lib/types'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { matchesSiteRules } from '@/lib/allowlist'
+import { useLocale } from '@/lib/i18n'
+import type { ContextBroTemplate, Endpoint, SiteRule } from '@/lib/types'
 
 interface PageInfo {
 	title: string
@@ -14,11 +19,13 @@ interface PageInfo {
 type ShareStatus = 'idle' | 'loading' | 'success' | 'error'
 
 export default function App() {
+	const { t } = useLocale()
 	const [endpoints, setEndpoints] = useState<Endpoint[]>([])
 	const [templates, setTemplates] = useState<ContextBroTemplate[]>([])
 	const [selectedEndpoint, setSelectedEndpoint] = useState('')
 	const [selectedTemplate, setSelectedTemplate] = useState('default')
 	const [pageInfo, setPageInfo] = useState<PageInfo | null>(null)
+	const [matchedPattern, setMatchedPattern] = useState<string | null>(null)
 	const [preview, setPreview] = useState('')
 	const [previewError, setPreviewError] = useState('')
 	const [previewLoading, setPreviewLoading] = useState(true)
@@ -54,29 +61,44 @@ export default function App() {
 
 	// Load settings and page data on mount
 	useEffect(() => {
-		async function loadSettings() {
-			const result = await browser.storage.local.get(['endpoints', 'templates'])
+		async function init() {
+			const result = await browser.storage.local.get(['endpoints', 'templates', 'siteRules'])
 			const eps = (result.endpoints as Endpoint[]) || []
 			const tpls = (result.templates as ContextBroTemplate[]) || []
+			const rules = (result.siteRules as SiteRule[]) || []
 			setEndpoints(eps)
 			setTemplates(tpls)
-			const firstEnabled = eps.find((e) => e.enabled)
-			if (firstEnabled) setSelectedEndpoint(firstEnabled.id)
-		}
 
-		async function loadPageData() {
 			const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
 			if (!tab?.id) return
+
 			setPageInfo({
 				title: tab.title || '',
 				url: tab.url || '',
 				domain: tab.url ? new URL(tab.url).hostname : '',
 			})
+
+			// Auto-detect matching site rule
+			const matched = tab.url ? matchesSiteRules(tab.url, rules) : null
+			if (matched) {
+				setMatchedPattern(matched.pattern)
+				if (matched.templateId) setSelectedTemplate(matched.templateId)
+				if (matched.endpointIds.length > 0) {
+					const firstEndpoint = eps.find((e) => e.enabled && matched.endpointIds.includes(e.id))
+					if (firstEndpoint) setSelectedEndpoint(firstEndpoint.id)
+				} else {
+					const firstEnabled = eps.find((e) => e.enabled)
+					if (firstEnabled) setSelectedEndpoint(firstEnabled.id)
+				}
+			} else {
+				const firstEnabled = eps.find((e) => e.enabled)
+				if (firstEnabled) setSelectedEndpoint(firstEnabled.id)
+			}
+
 			loadPreview(tab.id)
 		}
 
-		loadSettings()
-		loadPageData()
+		init()
 	}, [loadPreview])
 
 	// Re-compile preview when template changes
@@ -100,7 +122,7 @@ export default function App() {
 
 		if (result?.ok) {
 			setShareStatus('success')
-			setShareMessage(`Sent (${result.status})`)
+			setShareMessage(t('popup.sent', { status: String(result.status) }))
 			setTimeout(() => setShareStatus('idle'), 2000)
 		} else {
 			setShareStatus('error')
@@ -121,45 +143,28 @@ export default function App() {
 	}
 
 	return (
-		<div className="w-96 bg-white">
+		<div className="w-96 bg-background">
 			{/* Header */}
-			<div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-				<h1 className="text-sm font-semibold text-gray-900">Context Bro</h1>
-				<button
-					type="button"
+			<div className="flex items-center justify-between border-b px-4 py-3">
+				<h1 className="text-sm font-semibold text-foreground">Context Bro</h1>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="h-7 w-7"
 					onClick={openOptions}
-					className="text-gray-400 hover:text-gray-600"
 					title="Settings"
 				>
-					<svg
-						className="h-4 w-4"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						role="img"
-						aria-label="Settings"
-					>
-						<path
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth={2}
-							d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-						/>
-						<path
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth={2}
-							d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-						/>
-					</svg>
-				</button>
+					<Settings className="h-4 w-4" />
+				</Button>
 			</div>
 
 			<div className="space-y-3 p-4">
 				{/* Endpoint & Template selectors */}
 				<div className="grid grid-cols-2 gap-2">
 					<div>
-						<span className="mb-1 block text-xs font-medium text-gray-500">Endpoint</span>
+						<span className="mb-1 block text-xs font-medium text-muted-foreground">
+							{t('popup.endpoint')}
+						</span>
 						<EndpointSelector
 							endpoints={endpoints}
 							selectedId={selectedEndpoint}
@@ -167,7 +172,9 @@ export default function App() {
 						/>
 					</div>
 					<div>
-						<span className="mb-1 block text-xs font-medium text-gray-500">Template</span>
+						<span className="mb-1 block text-xs font-medium text-muted-foreground">
+							{t('popup.template')}
+						</span>
 						<TemplateSelector
 							templates={templates}
 							selectedId={selectedTemplate}
@@ -178,11 +185,21 @@ export default function App() {
 
 				{/* Page Info */}
 				{pageInfo && (
-					<div className="rounded border border-gray-100 bg-gray-50 p-2">
-						<p className="truncate text-sm font-medium text-gray-800" title={pageInfo.title}>
-							{pageInfo.title || 'Untitled'}
-						</p>
-						<p className="truncate text-xs text-gray-400" title={pageInfo.url}>
+					<div className="rounded-md border bg-muted/50 p-2">
+						<div className="flex items-center gap-2">
+							<p
+								className="truncate text-sm font-medium text-foreground flex-1"
+								title={pageInfo.title}
+							>
+								{pageInfo.title || 'Untitled'}
+							</p>
+							{matchedPattern && (
+								<Badge variant="secondary" className="text-[10px] shrink-0">
+									{matchedPattern}
+								</Badge>
+							)}
+						</div>
+						<p className="truncate text-xs text-muted-foreground" title={pageInfo.url}>
 							{pageInfo.domain}
 						</p>
 					</div>
@@ -190,34 +207,30 @@ export default function App() {
 
 				{/* Preview */}
 				<div>
-					<span className="mb-1 block text-xs font-medium text-gray-500">Preview</span>
+					<span className="mb-1 block text-xs font-medium text-muted-foreground">
+						{t('popup.preview')}
+					</span>
 					<JsonPreview content={preview} error={previewError} loading={previewLoading} />
 				</div>
 
 				{/* Actions */}
 				<div className="flex gap-2">
-					<button
-						type="button"
+					<Button
+						className="flex-1"
 						onClick={handleShare}
 						disabled={shareStatus === 'loading' || !selectedEndpoint || endpoints.length === 0}
-						className="flex-1 rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
 					>
-						{shareStatus === 'loading' ? 'Sending...' : 'Share'}
-					</button>
-					<button
-						type="button"
-						onClick={handleCopy}
-						disabled={!preview}
-						className="rounded border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						Copy
-					</button>
+						{shareStatus === 'loading' ? t('popup.sending') : t('popup.share')}
+					</Button>
+					<Button variant="outline" onClick={handleCopy} disabled={!preview}>
+						{t('popup.copy')}
+					</Button>
 				</div>
 
 				{/* Status message */}
 				{shareMessage && (
 					<p
-						className={`text-center text-xs ${shareStatus === 'success' ? 'text-green-600' : 'text-red-600'}`}
+						className={`text-center text-xs ${shareStatus === 'success' ? 'text-green-600' : 'text-destructive'}`}
 					>
 						{shareMessage}
 					</p>

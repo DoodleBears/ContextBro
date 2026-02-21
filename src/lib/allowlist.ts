@@ -1,4 +1,4 @@
-import type { AllowlistEntry } from '@/lib/types'
+import type { AllowlistEntry, SiteRule } from '@/lib/types'
 
 /**
  * Check if a URL matches any enabled allowlist entry.
@@ -37,6 +37,27 @@ function matchesPattern(hostname: string, pattern: string): boolean {
 
 	// Exact match
 	return normalizedHost === normalizedPattern
+}
+
+/**
+ * Check if a URL matches any enabled site rule.
+ */
+export function matchesSiteRules(url: string, rules: SiteRule[]): SiteRule | null {
+	let hostname: string
+	try {
+		hostname = new URL(url).hostname
+	} catch {
+		return null
+	}
+
+	for (const rule of rules) {
+		if (!rule.enabled) continue
+		if (matchesPattern(hostname, rule.pattern)) {
+			return rule
+		}
+	}
+
+	return null
 }
 
 /** Built-in allowlist presets for quick setup */
