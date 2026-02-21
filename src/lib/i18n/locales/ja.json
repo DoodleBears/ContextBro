@@ -22,8 +22,8 @@
 	"sites.scheduleMode": "スケジュールモード",
 	"sites.focusedTab": "アクティブタブ",
 	"sites.focusedTabDesc": "現在のウィンドウのアクティブタブのみ共有",
-	"sites.allAllowed": "すべてのマッチするタブ",
-	"sites.allAllowedDesc": "ルールにマッチするすべてのタブを共有",
+	"sites.anyTab": "すべてのタブ",
+	"sites.anyTabDesc": "タブがバックグラウンドでもトリガー",
 
 	"endpoints.description": "ページコンテキストの送信先APIエンドポイントを設定します。",
 	"endpoints.add": "エンドポイントを追加",
@@ -75,6 +75,7 @@
 	"common.enabled": "有効",
 	"common.default": "デフォルト",
 	"common.done": "完了",
+	"common.clone": "複製",
 
 	"interval.5min": "5分",
 	"interval.10min": "10分",

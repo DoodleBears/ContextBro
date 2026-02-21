@@ -1,4 +1,4 @@
-import { Plus, Trash2, X } from 'lucide-react'
+import { Copy, Plus, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -26,6 +26,29 @@ export function EndpointEditor({ endpoints, onChange }: Props) {
 		const ep = createEndpoint()
 		onChange([...endpoints, ep])
 		setEditingId(ep.id)
+
+		requestAnimationFrame(() => {
+			document
+				.getElementById(`endpoint-${ep.id}`)
+				?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+		})
+	}
+
+	function cloneEndpoint(ep: Endpoint) {
+		const clone: Endpoint = {
+			...ep,
+			id: crypto.randomUUID(),
+			name: `${ep.name} (Copy)`,
+			headers: { ...ep.headers },
+		}
+		onChange([...endpoints, clone])
+		setEditingId(clone.id)
+
+		requestAnimationFrame(() => {
+			document
+				.getElementById(`endpoint-${clone.id}`)
+				?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+		})
 	}
 
 	function updateEndpoint(id: string, updates: Partial<Endpoint>) {
@@ -83,7 +106,7 @@ export function EndpointEditor({ endpoints, onChange }: Props) {
 	return (
 		<div className="space-y-4">
 			{endpoints.map((ep) => (
-				<Card key={ep.id} className="p-4">
+				<Card key={ep.id} id={`endpoint-${ep.id}`} className="p-4">
 					<div className="flex items-center justify-between mb-3">
 						<div className="flex items-center gap-3">
 							<Switch
@@ -107,14 +130,25 @@ export function EndpointEditor({ endpoints, onChange }: Props) {
 								</button>
 							)}
 						</div>
-						<Button
-							variant="ghost"
-							size="icon"
-							className="h-7 w-7 text-muted-foreground hover:text-destructive"
-							onClick={() => removeEndpoint(ep.id)}
-						>
-							<Trash2 className="h-3.5 w-3.5" />
-						</Button>
+						<div className="flex items-center gap-1">
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-7 w-7 text-muted-foreground hover:text-foreground"
+								onClick={() => cloneEndpoint(ep)}
+								title={t('common.clone')}
+							>
+								<Copy className="h-3.5 w-3.5" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-7 w-7 text-muted-foreground hover:text-destructive"
+								onClick={() => removeEndpoint(ep.id)}
+							>
+								<Trash2 className="h-3.5 w-3.5" />
+							</Button>
+						</div>
 					</div>
 
 					{editingId === ep.id && (
@@ -195,10 +229,13 @@ export function EndpointEditor({ endpoints, onChange }: Props) {
 				</Card>
 			))}
 
-			<Button variant="outline" className="w-full border-dashed" onClick={addEndpoint}>
-				<Plus className="h-4 w-4" />
-				{t('endpoints.add')}
-			</Button>
+			{/* Add endpoint — sticky above the save bar */}
+			<div className="sticky bottom-16 z-10 -mx-1 rounded-lg border bg-background/80 p-3 backdrop-blur-sm">
+				<Button variant="outline" className="w-full border-dashed" onClick={addEndpoint}>
+					<Plus className="h-4 w-4" />
+					{t('endpoints.add')}
+				</Button>
+			</div>
 		</div>
 	)
 }

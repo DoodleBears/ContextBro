@@ -30,10 +30,10 @@ export interface SiteRule {
 	endpointIds: string[]
 	autoShare: boolean
 	intervalMinutes: number
+	scheduleMode: 'focused' | 'any_tab'
 }
 
 export interface GlobalSettings {
-	scheduleMode: 'focused' | 'all_allowed'
 	locale: 'en' | 'zh' | 'ja'
 }
 

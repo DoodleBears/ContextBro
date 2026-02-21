@@ -25,7 +25,7 @@ export function matchesAllowlist(url: string, allowlist: AllowlistEntry[]): Allo
 	return null
 }
 
-function matchesPattern(hostname: string, pattern: string): boolean {
+export function matchesPattern(hostname: string, pattern: string): boolean {
 	const normalizedPattern = pattern.toLowerCase().trim()
 	const normalizedHost = hostname.toLowerCase()
 

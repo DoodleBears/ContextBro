@@ -1,5 +1,5 @@
 import '@/assets/tailwind.css'
-import { Check, Globe, Keyboard, Settings } from 'lucide-react'
+import { Check, Crosshair, Globe, Keyboard, Workflow } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { EndpointEditor } from '@/components/EndpointEditor'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
@@ -11,7 +11,6 @@ import { useLocale } from '@/lib/i18n'
 import type { ContextBroTemplate, Endpoint, GlobalSettings, SiteRule } from '@/lib/types'
 
 const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
-	scheduleMode: 'focused',
 	locale: 'en',
 }
 
@@ -22,6 +21,7 @@ export default function App() {
 	const [templates, setTemplates] = useState<ContextBroTemplate[]>([])
 	const [globalSettings, setGlobalSettings] = useState<GlobalSettings>(DEFAULT_GLOBAL_SETTINGS)
 	const [saved, setSaved] = useState(false)
+	const [activeTab, setActiveTab] = useState('sites')
 
 	const loadSettings = useCallback(async () => {
 		const result = await browser.storage.local.get([
@@ -52,37 +52,28 @@ export default function App() {
 	}
 
 	return (
-		<div className="mx-auto min-h-screen max-w-4xl bg-background p-6">
+		<div className="mx-auto min-h-screen max-w-4xl bg-background p-6 pb-20">
 			{/* Header */}
 			<div className="mb-6 flex items-center justify-between">
 				<h1 className="text-xl font-bold text-foreground">{t('settings.title')}</h1>
-				<div className="flex items-center gap-3">
-					<LanguageSwitcher />
-					<Button onClick={save} size="sm">
-						{saved ? (
-							<>
-								<Check className="h-4 w-4" />
-								{t('settings.saved')}
-							</>
-						) : (
-							t('settings.save')
-						)}
-					</Button>
-				</div>
+				<LanguageSwitcher />
 			</div>
 
 			{/* Tabs */}
-			<Tabs defaultValue="sites">
+			<Tabs value={activeTab} onValueChange={setActiveTab}>
 				<TabsList className="mb-6">
 					<TabsTrigger value="sites">
 						<Globe className="h-3.5 w-3.5 mr-1.5" />
 						{t('tabs.sites')}
 					</TabsTrigger>
 					<TabsTrigger value="endpoints">
-						<Settings className="h-3.5 w-3.5 mr-1.5" />
+						<Crosshair className="h-3.5 w-3.5 mr-1.5" />
 						{t('tabs.endpoints')}
 					</TabsTrigger>
-					<TabsTrigger value="templates">{t('tabs.templates')}</TabsTrigger>
+					<TabsTrigger value="templates">
+						<Workflow className="h-3.5 w-3.5 mr-1.5" />
+						{t('tabs.templates')}
+					</TabsTrigger>
 					<TabsTrigger value="general">{t('tabs.general')}</TabsTrigger>
 				</TabsList>
 
@@ -92,9 +83,8 @@ export default function App() {
 						siteRules={siteRules}
 						endpoints={endpoints}
 						templates={templates}
-						globalSettings={globalSettings}
 						onRulesChange={setSiteRules}
-						onSettingsChange={setGlobalSettings}
+						onNavigateToTab={setActiveTab}
 					/>
 				</TabsContent>
 
@@ -139,6 +129,22 @@ export default function App() {
 					</div>
 				</TabsContent>
 			</Tabs>
+
+			{/* Sticky save bar */}
+			<div className="fixed bottom-0 left-0 right-0 z-20 border-t bg-background/80 backdrop-blur-sm">
+				<div className="mx-auto flex max-w-4xl items-center justify-end px-6 py-3">
+					<Button onClick={save} size="sm">
+						{saved ? (
+							<>
+								<Check className="h-4 w-4" />
+								{t('settings.saved')}
+							</>
+						) : (
+							t('settings.save')
+						)}
+					</Button>
+				</div>
+			</div>
 		</div>
 	)
 }

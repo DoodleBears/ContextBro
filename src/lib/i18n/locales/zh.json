@@ -22,8 +22,8 @@
 	"sites.scheduleMode": "定时模式",
 	"sites.focusedTab": "当前标签页",
 	"sites.focusedTabDesc": "仅分享当前窗口的活动标签页",
-	"sites.allAllowed": "所有匹配标签页",
-	"sites.allAllowedDesc": "分享所有匹配规则的打开标签页",
+	"sites.anyTab": "任意标签页",
+	"sites.anyTabDesc": "即使标签页在后台也会触发",
 
 	"endpoints.description": "配置接收页面内容的 API 接口。",
 	"endpoints.add": "添加接口",
@@ -75,6 +75,7 @@
 	"common.enabled": "启用",
 	"common.default": "默认",
 	"common.done": "完成",
+	"common.clone": "复制",
 
 	"interval.5min": "5 分钟",
 	"interval.10min": "10 分钟",

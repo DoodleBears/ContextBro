@@ -22,8 +22,8 @@
 	"sites.scheduleMode": "Schedule mode",
 	"sites.focusedTab": "Focused tab",
 	"sites.focusedTabDesc": "Only share the active tab in the current window",
-	"sites.allAllowed": "All matching tabs",
-	"sites.allAllowedDesc": "Share all open tabs that match site rules",
+	"sites.anyTab": "Any tab",
+	"sites.anyTabDesc": "Share even if the tab is in the background",
 
 	"endpoints.description": "Configure API endpoints where page context will be sent.",
 	"endpoints.add": "Add endpoint",
@@ -75,6 +75,7 @@
 	"common.enabled": "Enabled",
 	"common.default": "Default",
 	"common.done": "Done",
+	"common.clone": "Clone",
 
 	"interval.5min": "5 min",
 	"interval.10min": "10 min",

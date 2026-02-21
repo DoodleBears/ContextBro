@@ -2,7 +2,7 @@ import type { ChatBatch, StreamInfo, TranscriptChunk } from '@/lib/adapters/type
 import { matchesSiteRules } from '@/lib/allowlist'
 import { sendToEndpoint } from '@/lib/api/send'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
-import { migrateV1ToV2 } from '@/lib/migration'
+import { migrateV1ToV2, migrateV2ToV3 } from '@/lib/migration'
 import { initScheduler, updateGlobalSettings, updateSiteRules } from '@/lib/scheduler'
 import { getEndpoints as getEndpointsFromStorage, getSiteRules } from '@/lib/storage'
 import { compileTemplate } from '@/lib/template-engine/compiler'
@@ -27,10 +27,15 @@ const DEFAULT_TEMPLATE: ContextBroTemplate = {
 export default defineBackground(() => {
 	console.log('Context Bro background service worker started')
 
-	// Run migration before initializing scheduler
-	migrateV1ToV2().then((migrated) => {
-		if (migrated) console.debug('[background] Storage migration completed')
-	})
+	// Run migrations before initializing scheduler
+	migrateV1ToV2()
+		.then((migrated) => {
+			if (migrated) console.debug('[background] V1→V2 migration completed')
+			return migrateV2ToV3()
+		})
+		.then((migrated) => {
+			if (migrated) console.debug('[background] V2→V3 migration completed')
+		})
 
 	// Initialize the scheduled extraction system
 	initScheduler({

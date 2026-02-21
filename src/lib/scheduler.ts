@@ -1,9 +1,8 @@
-import { matchesSiteRules } from '@/lib/allowlist'
+import { matchesPattern } from '@/lib/allowlist'
 import { sendToEndpoint } from '@/lib/api/send'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
 import { hasContentChanged } from '@/lib/dedup'
 import {
-	getGlobalSettings,
 	getLastSharedAt,
 	getSiteRules,
 	setGlobalSettings as saveGlobalSettings,
@@ -71,7 +70,8 @@ async function syncAlarm(rules: SiteRule[]): Promise<void> {
 
 /**
  * Core scheduled extraction logic.
- * Queries tabs → matches site rules → checks per-rule interval → dedup → extract → compile → POST to all configured endpoints.
+ * Iterates active rules → per-rule scheduleMode determines candidate tabs →
+ * checks per-rule interval → dedup → extract → compile → POST to configured endpoints.
  */
 async function runScheduledExtraction(deps: {
 	ensureContentScript: (tabId: number) => Promise<void>
@@ -82,83 +82,97 @@ async function runScheduledExtraction(deps: {
 	const activeRules = rules.filter((r) => r.enabled && r.autoShare)
 	if (activeRules.length === 0) return
 
-	const globalSettings = await getGlobalSettings()
 	const allEndpoints = await deps.getEndpoints()
 	const lastSharedAt = await getLastSharedAt()
 	const now = Date.now()
 
-	// Query tabs based on global schedule mode
-	const tabs =
-		globalSettings.scheduleMode === 'focused'
-			? await browser.tabs.query({ active: true, currentWindow: true })
-			: await browser.tabs.query({})
+	// Query tabs once for both modes
+	const allTabs = await browser.tabs.query({})
+	const [focusedTab] = await browser.tabs.query({ active: true, currentWindow: true })
 
 	let lastSharedUpdated = false
+	const processedTabs = new Set<string>() // track rule+tab combos to avoid duplicates
 
-	for (const tab of tabs) {
-		if (!tab.id || !tab.url) continue
-		if (!tab.url.startsWith('http://') && !tab.url.startsWith('https://')) continue
-
-		// Check if tab matches any active site rule
-		const matchedRule = matchesSiteRules(tab.url, activeRules)
-		if (!matchedRule) continue
-
+	for (const rule of activeRules) {
 		// Check per-rule interval
-		const lastTime = lastSharedAt[matchedRule.pattern] || 0
-		if (now - lastTime < matchedRule.intervalMinutes * 60_000) continue
+		const lastTime = lastSharedAt[rule.pattern] || 0
+		if (now - lastTime < rule.intervalMinutes * 60_000) continue
+
+		// Determine candidate tabs based on per-rule scheduleMode
+		const candidateTabs =
+			rule.scheduleMode === 'focused' ? (focusedTab ? [focusedTab] : []) : allTabs
 
 		// Resolve target endpoints
 		const targetEndpoints =
-			matchedRule.endpointIds.length > 0
-				? allEndpoints.filter((e) => e.enabled && matchedRule.endpointIds.includes(e.id))
+			rule.endpointIds.length > 0
+				? allEndpoints.filter((e) => e.enabled && rule.endpointIds.includes(e.id))
 				: allEndpoints.filter((e) => e.enabled).slice(0, 1)
 
 		if (targetEndpoints.length === 0) {
-			console.debug(`[scheduler] No endpoints for rule: ${matchedRule.pattern}`)
+			console.debug(`[scheduler] No endpoints for rule: ${rule.pattern}`)
 			continue
 		}
 
-		try {
-			await deps.ensureContentScript(tab.id)
-			const response = await extractPageContent(tab.id)
-			if (!response) continue
+		for (const tab of candidateTabs) {
+			if (!tab.id || !tab.url) continue
+			if (!tab.url.startsWith('http://') && !tab.url.startsWith('https://')) continue
 
-			// Dedup — skip if page content hasn't changed
-			const contentKey = response.content || response.fullHtml || ''
-			const changed = await hasContentChanged(tab.url, contentKey)
-			if (!changed) {
-				console.debug(`[scheduler] Skipping unchanged: ${tab.url}`)
+			// Check if this tab matches this specific rule's pattern
+			let hostname: string
+			try {
+				hostname = new URL(tab.url).hostname
+			} catch {
 				continue
 			}
+			if (!matchesPattern(hostname, rule.pattern)) continue
 
-			const variables = buildVariables(response, tab.url)
-			const template = await deps.getTemplate(matchedRule.templateId)
-			const compiled = await compileTemplate(tab.id, template.contentFormat, variables, tab.url)
+			// Avoid processing the same rule+tab combo
+			const comboKey = `${rule.pattern}::${tab.id}`
+			if (processedTabs.has(comboKey)) continue
+			processedTabs.add(comboKey)
 
-			// Send to all configured endpoints (partial failure tolerant)
-			const results = await Promise.allSettled(
-				targetEndpoints.map((ep) => sendToEndpoint(ep, compiled)),
-			)
+			try {
+				await deps.ensureContentScript(tab.id)
+				const response = await extractPageContent(tab.id)
+				if (!response) continue
 
-			for (let i = 0; i < results.length; i++) {
-				const r = results[i]
-				if (r.status === 'fulfilled' && r.value.ok) {
-					console.debug(`[scheduler] Sent ${tab.url} → ${targetEndpoints[i].name}`)
-				} else {
-					const reason =
-						r.status === 'rejected' ? r.reason : `${r.value.status} ${r.value.statusText}`
-					console.error(`[scheduler] Failed ${tab.url} → ${targetEndpoints[i].name}: ${reason}`)
+				// Dedup — skip if page content hasn't changed
+				const contentKey = response.content || response.fullHtml || ''
+				const changed = await hasContentChanged(tab.url, contentKey)
+				if (!changed) {
+					console.debug(`[scheduler] Skipping unchanged: ${tab.url}`)
+					continue
 				}
-			}
 
-			// Mark as shared if at least one endpoint succeeded
-			const anySuccess = results.some((r) => r.status === 'fulfilled' && r.value.ok)
-			if (anySuccess) {
-				lastSharedAt[matchedRule.pattern] = now
-				lastSharedUpdated = true
+				const variables = buildVariables(response, tab.url)
+				const template = await deps.getTemplate(rule.templateId)
+				const compiled = await compileTemplate(tab.id, template.contentFormat, variables, tab.url)
+
+				// Send to all configured endpoints (partial failure tolerant)
+				const results = await Promise.allSettled(
+					targetEndpoints.map((ep) => sendToEndpoint(ep, compiled)),
+				)
+
+				for (let i = 0; i < results.length; i++) {
+					const r = results[i]
+					if (r.status === 'fulfilled' && r.value.ok) {
+						console.debug(`[scheduler] Sent ${tab.url} → ${targetEndpoints[i].name}`)
+					} else {
+						const reason =
+							r.status === 'rejected' ? r.reason : `${r.value.status} ${r.value.statusText}`
+						console.error(`[scheduler] Failed ${tab.url} → ${targetEndpoints[i].name}: ${reason}`)
+					}
+				}
+
+				// Mark as shared if at least one endpoint succeeded
+				const anySuccess = results.some((r) => r.status === 'fulfilled' && r.value.ok)
+				if (anySuccess) {
+					lastSharedAt[rule.pattern] = now
+					lastSharedUpdated = true
+				}
+			} catch (error) {
+				console.error(`[scheduler] Error processing ${tab.url}:`, error)
 			}
-		} catch (error) {
-			console.error(`[scheduler] Error processing ${tab.url}:`, error)
 		}
 	}
 

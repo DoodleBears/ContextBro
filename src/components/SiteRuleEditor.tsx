@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react'
+import { Copy, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -15,7 +15,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { ALLOWLIST_PRESETS } from '@/lib/allowlist'
 import { useLocale } from '@/lib/i18n'
-import type { ContextBroTemplate, Endpoint, GlobalSettings, SiteRule } from '@/lib/types'
+import type { ContextBroTemplate, Endpoint, SiteRule } from '@/lib/types'
 
 const INTERVAL_OPTIONS = [
 	{ value: 5, key: 'interval.5min' },
@@ -30,18 +30,16 @@ interface Props {
 	siteRules: SiteRule[]
 	endpoints: Endpoint[]
 	templates: ContextBroTemplate[]
-	globalSettings: GlobalSettings
 	onRulesChange: (rules: SiteRule[]) => void
-	onSettingsChange: (settings: GlobalSettings) => void
+	onNavigateToTab?: (tab: string) => void
 }
 
 export function SiteRuleEditor({
 	siteRules,
 	endpoints,
 	templates,
-	globalSettings,
 	onRulesChange,
-	onSettingsChange,
+	onNavigateToTab,
 }: Props) {
 	const { t } = useLocale()
 	const [newPattern, setNewPattern] = useState('')
@@ -52,19 +50,27 @@ export function SiteRuleEditor({
 		if (siteRules.some((r) => r.pattern === trimmed)) return
 
 		const enabledEndpointIds = endpoints.filter((e) => e.enabled).map((e) => e.id)
+		const newId = crypto.randomUUID()
 
 		onRulesChange([
 			...siteRules,
 			{
-				id: crypto.randomUUID(),
+				id: newId,
 				pattern: trimmed,
 				enabled: true,
 				endpointIds: enabledEndpointIds,
 				autoShare: false,
 				intervalMinutes: 15,
+				scheduleMode: 'focused',
 			},
 		])
 		setNewPattern('')
+
+		requestAnimationFrame(() => {
+			document
+				.getElementById(`site-rule-${newId}`)
+				?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+		})
 	}
 
 	function removeRule(id: string) {
@@ -73,6 +79,24 @@ export function SiteRuleEditor({
 
 	function updateRule(id: string, updates: Partial<SiteRule>) {
 		onRulesChange(siteRules.map((r) => (r.id === id ? { ...r, ...updates } : r)))
+	}
+
+	function cloneRule(rule: SiteRule) {
+		const newId = crypto.randomUUID()
+		onRulesChange([
+			...siteRules,
+			{
+				...rule,
+				id: newId,
+				pattern: `${rule.pattern} (copy)`,
+			},
+		])
+
+		requestAnimationFrame(() => {
+			document
+				.getElementById(`site-rule-${newId}`)
+				?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+		})
 	}
 
 	function toggleEndpoint(ruleId: string, endpointId: string) {
@@ -100,6 +124,7 @@ export function SiteRuleEditor({
 				endpointIds: enabledEndpointIds,
 				autoShare: false,
 				intervalMinutes: 15,
+				scheduleMode: 'focused' as const,
 			}))
 
 		if (newRules.length > 0) {
@@ -111,45 +136,6 @@ export function SiteRuleEditor({
 
 	return (
 		<div className="space-y-6">
-			{/* Schedule mode */}
-			<div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-				<Label className="text-sm font-medium">{t('sites.scheduleMode')}</Label>
-				<div className="grid grid-cols-2 gap-3">
-					<label
-						className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${globalSettings.scheduleMode === 'focused' ? 'border-primary bg-primary/5' : 'border-border'}`}
-					>
-						<input
-							type="radio"
-							name="schedule-mode"
-							value="focused"
-							checked={globalSettings.scheduleMode === 'focused'}
-							onChange={() => onSettingsChange({ ...globalSettings, scheduleMode: 'focused' })}
-							className="mt-0.5"
-						/>
-						<div>
-							<span className="block text-sm font-medium">{t('sites.focusedTab')}</span>
-							<span className="text-xs text-muted-foreground">{t('sites.focusedTabDesc')}</span>
-						</div>
-					</label>
-					<label
-						className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${globalSettings.scheduleMode === 'all_allowed' ? 'border-primary bg-primary/5' : 'border-border'}`}
-					>
-						<input
-							type="radio"
-							name="schedule-mode"
-							value="all_allowed"
-							checked={globalSettings.scheduleMode === 'all_allowed'}
-							onChange={() => onSettingsChange({ ...globalSettings, scheduleMode: 'all_allowed' })}
-							className="mt-0.5"
-						/>
-						<div>
-							<span className="block text-sm font-medium">{t('sites.allAllowed')}</span>
-							<span className="text-xs text-muted-foreground">{t('sites.allAllowedDesc')}</span>
-						</div>
-					</label>
-				</div>
-			</div>
-
 			{/* Presets */}
 			<div className="space-y-2">
 				<Label className="text-xs text-muted-foreground">{t('sites.presets')}</Label>
@@ -168,18 +154,34 @@ export function SiteRuleEditor({
 				{siteRules.map((rule) => (
 					<Card
 						key={rule.id}
+						id={`site-rule-${rule.id}`}
 						className={`p-4 transition-opacity ${!rule.enabled ? 'opacity-50' : ''}`}
 					>
 						<div className="space-y-3">
-							{/* Row 1: Enable + Pattern + Remove */}
+							{/* Row 1: Enable + Pattern (editable) + Clone + Remove */}
 							<div className="flex items-center gap-3">
 								<Switch
 									checked={rule.enabled}
 									onCheckedChange={(checked) => updateRule(rule.id, { enabled: checked })}
 								/>
-								<code className="flex-1 text-sm font-mono bg-muted px-2 py-1 rounded">
-									{rule.pattern}
-								</code>
+								<Input
+									value={rule.pattern}
+									onChange={(e) => updateRule(rule.id, { pattern: e.target.value.toLowerCase() })}
+									onBlur={(e) =>
+										updateRule(rule.id, { pattern: e.target.value.trim().toLowerCase() })
+									}
+									className="flex-1 text-sm font-mono h-8"
+									placeholder={t('sites.patternPlaceholder')}
+								/>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="h-7 w-7 text-muted-foreground hover:text-foreground"
+									onClick={() => cloneRule(rule)}
+									title={t('common.clone')}
+								>
+									<Copy className="h-3.5 w-3.5" />
+								</Button>
 								<Button
 									variant="ghost"
 									size="icon"
@@ -194,24 +196,37 @@ export function SiteRuleEditor({
 							<div className="grid grid-cols-2 gap-3">
 								<div className="space-y-1">
 									<Label className="text-xs text-muted-foreground">{t('sites.template')}</Label>
-									<Select
-										value={rule.templateId || 'default'}
-										onValueChange={(v) =>
-											updateRule(rule.id, { templateId: v === 'default' ? undefined : v })
-										}
-									>
-										<SelectTrigger className="h-8 text-xs">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="default">{t('sites.defaultTemplate')}</SelectItem>
-											{templates.map((tmpl) => (
-												<SelectItem key={tmpl.id} value={tmpl.id}>
-													{tmpl.name || t('templates.unnamed')}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
+									<div className="flex items-center gap-1">
+										<Select
+											value={rule.templateId || 'default'}
+											onValueChange={(v) =>
+												updateRule(rule.id, { templateId: v === 'default' ? undefined : v })
+											}
+										>
+											<SelectTrigger className="h-8 text-xs">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="default">{t('sites.defaultTemplate')}</SelectItem>
+												{templates.map((tmpl) => (
+													<SelectItem key={tmpl.id} value={tmpl.id}>
+														{tmpl.name || t('templates.unnamed')}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										{templates.length === 0 && onNavigateToTab && (
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary"
+												onClick={() => onNavigateToTab('templates')}
+												title={t('templates.addBlank')}
+											>
+												<Plus className="h-3.5 w-3.5" />
+											</Button>
+										)}
+									</div>
 								</div>
 
 								<div className="space-y-1">
@@ -228,15 +243,25 @@ export function SiteRuleEditor({
 												</label>
 											))
 										) : (
-											<span className="text-xs text-muted-foreground">
+											<span className="flex items-center gap-1 text-xs text-muted-foreground">
 												{t('popup.noEndpoints')}
+												{onNavigateToTab && (
+													<Button
+														variant="ghost"
+														size="icon"
+														className="h-5 w-5 text-muted-foreground hover:text-primary"
+														onClick={() => onNavigateToTab('endpoints')}
+													>
+														<Plus className="h-3 w-3" />
+													</Button>
+												)}
 											</span>
 										)}
 									</div>
 								</div>
 							</div>
 
-							{/* Row 3: Auto-share + Interval */}
+							{/* Row 3: Auto-share + Schedule mode + Interval */}
 							<div className="flex items-center gap-4 pt-1 border-t border-border/50">
 								<div className="flex items-center gap-2">
 									<Switch
@@ -246,21 +271,37 @@ export function SiteRuleEditor({
 									<Label className="text-xs">{t('sites.autoShare')}</Label>
 								</div>
 								{rule.autoShare && (
-									<Select
-										value={String(rule.intervalMinutes)}
-										onValueChange={(v) => updateRule(rule.id, { intervalMinutes: Number(v) })}
-									>
-										<SelectTrigger className="h-7 w-[100px] text-xs">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent>
-											{INTERVAL_OPTIONS.map((opt) => (
-												<SelectItem key={opt.value} value={String(opt.value)}>
-													{t(opt.key)}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
+									<>
+										<Select
+											value={rule.scheduleMode || 'focused'}
+											onValueChange={(v) =>
+												updateRule(rule.id, { scheduleMode: v as 'focused' | 'any_tab' })
+											}
+										>
+											<SelectTrigger className="h-7 w-[130px] text-xs">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="focused">{t('sites.focusedTab')}</SelectItem>
+												<SelectItem value="any_tab">{t('sites.anyTab')}</SelectItem>
+											</SelectContent>
+										</Select>
+										<Select
+											value={String(rule.intervalMinutes)}
+											onValueChange={(v) => updateRule(rule.id, { intervalMinutes: Number(v) })}
+										>
+											<SelectTrigger className="h-7 w-[100px] text-xs">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												{INTERVAL_OPTIONS.map((opt) => (
+													<SelectItem key={opt.value} value={String(opt.value)}>
+														{t(opt.key)}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</>
 								)}
 							</div>
 						</div>
@@ -268,19 +309,21 @@ export function SiteRuleEditor({
 				))}
 			</div>
 
-			{/* Add site */}
-			<div className="flex gap-2">
-				<Input
-					value={newPattern}
-					onChange={(e) => setNewPattern(e.target.value)}
-					onKeyDown={(e) => e.key === 'Enter' && addRule(newPattern)}
-					placeholder={t('sites.patternPlaceholder')}
-					className="flex-1 font-mono text-sm"
-				/>
-				<Button onClick={() => addRule(newPattern)} disabled={!newPattern.trim()}>
-					<Plus className="h-4 w-4" />
-					{t('sites.add')}
-				</Button>
+			{/* Add site — sticky above the save bar */}
+			<div className="sticky bottom-16 z-10 -mx-1 rounded-lg border bg-background/80 p-3 backdrop-blur-sm">
+				<div className="flex gap-2">
+					<Input
+						value={newPattern}
+						onChange={(e) => setNewPattern(e.target.value)}
+						onKeyDown={(e) => e.key === 'Enter' && addRule(newPattern)}
+						placeholder={t('sites.patternPlaceholder')}
+						className="flex-1 font-mono text-sm"
+					/>
+					<Button onClick={() => addRule(newPattern)} disabled={!newPattern.trim()}>
+						<Plus className="h-4 w-4" />
+						{t('sites.add')}
+					</Button>
+				</div>
 			</div>
 
 			{/* Empty state */}

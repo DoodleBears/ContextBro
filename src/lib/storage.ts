@@ -1,7 +1,6 @@
 import type { ContextBroTemplate, Endpoint, GlobalSettings, SiteRule } from '@/lib/types'
 
 const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
-	scheduleMode: 'focused',
 	locale: 'en',
 }
 
