@@ -1,3 +1,4 @@
+import type { ChatBatch, StreamInfo, TranscriptChunk } from '@/lib/adapters/types'
 import { sendToEndpoint } from '@/lib/api/send'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
 import { initScheduler, updateScheduleConfig } from '@/lib/scheduler'
@@ -82,6 +83,28 @@ export default defineBackground(() => {
 
 		if (message.action === 'updateSchedule') {
 			updateScheduleConfig(message.config as ScheduleConfig).then(sendResponse)
+			return true
+		}
+
+		// ── Adapter messages ──
+
+		if (message.action === 'adapterActive') {
+			handleAdapterActive(message.platform, message.streamInfo)
+			return false
+		}
+
+		if (message.action === 'adapterInactive') {
+			handleAdapterInactive(message.platform)
+			return false
+		}
+
+		if (message.action === 'adapterChatBatch') {
+			handleChatBatch(message.batch).then(sendResponse)
+			return true
+		}
+
+		if (message.action === 'adapterTranscript') {
+			handleTranscript(message.chunk).then(sendResponse)
 			return true
 		}
 	})
@@ -212,4 +235,92 @@ async function getTemplate(templateId?: string): Promise<ContextBroTemplate> {
 	const result = await browser.storage.local.get('templates')
 	const templates = (result.templates as ContextBroTemplate[]) || []
 	return templates.find((t) => t.id === templateId) || DEFAULT_TEMPLATE
+}
+
+// --- Adapter handlers ---
+
+const activeAdapters = new Map<string, StreamInfo | null>()
+
+function handleAdapterActive(platform: string, streamInfo: StreamInfo | null): void {
+	activeAdapters.set(platform, streamInfo || null)
+	updateBadge()
+	console.debug(`[adapter] ${platform} active:`, streamInfo?.title || 'unknown')
+}
+
+function handleAdapterInactive(platform: string): void {
+	activeAdapters.delete(platform)
+	updateBadge()
+	console.debug(`[adapter] ${platform} inactive`)
+}
+
+function updateBadge(): void {
+	if (activeAdapters.size > 0) {
+		browser.action.setBadgeText({ text: '📡' })
+		browser.action.setBadgeBackgroundColor({ color: '#10b981' })
+	} else {
+		browser.action.setBadgeText({ text: '' })
+	}
+}
+
+async function handleChatBatch(batch: ChatBatch) {
+	try {
+		const endpoints = await getEndpoints()
+		const defaultEndpoint = endpoints.find((e) => e.enabled)
+		if (!defaultEndpoint) return { ok: false, error: 'No endpoint' }
+
+		// Build batch-specific variables
+		const messagesForJson = batch.messages.map((m) => ({
+			user: m.displayName,
+			message: m.message,
+			roles: m.roles,
+			event: m.event,
+			monetization: m.monetization || undefined,
+		}))
+
+		const body = JSON.stringify({
+			event_type: 'live_stream',
+			platform: batch.platform,
+			channel: batch.channelName,
+			title: batch.streamInfo?.title || '',
+			category: batch.streamInfo?.category || '',
+			viewers: batch.streamInfo?.viewerCount || 0,
+			isLive: batch.streamInfo?.isLive ?? true,
+			totalMessages: batch.totalCount,
+			sampledMessages: batch.sampledCount,
+			messages: messagesForJson,
+			donations: batch.donations,
+			memberships: batch.memberships,
+			timestamp: new Date().toISOString(),
+		})
+
+		const result = await sendToEndpoint(defaultEndpoint, body)
+		return result
+	} catch (error) {
+		return { ok: false, error: String(error) }
+	}
+}
+
+async function handleTranscript(chunk: TranscriptChunk) {
+	try {
+		const endpoints = await getEndpoints()
+		const defaultEndpoint = endpoints.find((e) => e.enabled)
+		if (!defaultEndpoint) return { ok: false, error: 'No endpoint' }
+
+		const body = JSON.stringify({
+			event_type: 'transcript',
+			platform: chunk.platform,
+			videoId: chunk.videoId,
+			title: chunk.title,
+			channel: chunk.channelName,
+			text: chunk.text,
+			currentTime: chunk.currentTime,
+			duration: chunk.duration,
+			timestamp: new Date().toISOString(),
+		})
+
+		const result = await sendToEndpoint(defaultEndpoint, body)
+		return result
+	} catch (error) {
+		return { ok: false, error: String(error) }
+	}
 }
