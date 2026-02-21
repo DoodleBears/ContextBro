@@ -4,7 +4,7 @@ import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root'
 
 export default defineContentScript({
 	matches: ['<all_urls>'],
-	cssInjectionMode: 'ui',
+	cssInjectionMode: 'manual',
 	runAt: 'document_idle',
 	async main(ctx) {
 		let currentSelection = ''

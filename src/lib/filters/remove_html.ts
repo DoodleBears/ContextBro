@@ -16,6 +16,17 @@ export const remove_html = (html: string, params: string = ''): string => {
 		return html
 	}
 
+	// DOMParser is unavailable in service workers — fall back to regex strip
+	if (typeof DOMParser === 'undefined') {
+		let result = html
+		for (const elem of elementsToRemove) {
+			if (!elem.startsWith('.') && !elem.startsWith('#')) {
+				result = result.replace(new RegExp(`<${elem}[^>]*>[\\s\\S]*?</${elem}>`, 'gi'), '')
+			}
+		}
+		return result
+	}
+
 	const parser = new DOMParser()
 	const doc = parser.parseFromString(html, 'text/html')
 

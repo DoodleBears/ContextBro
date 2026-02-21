@@ -41,6 +41,11 @@ export const html_to_json = (input: string): string => {
 	}
 
 	try {
+		// DOMParser is unavailable in service workers — return input as-is
+		if (typeof DOMParser === 'undefined') {
+			return JSON.stringify({ type: 'text', content: input })
+		}
+
 		const parser = new DOMParser()
 		const doc = parser.parseFromString(input, 'text/html')
 		const bodyChildren = Array.from(doc.body.childNodes)

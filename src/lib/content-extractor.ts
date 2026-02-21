@@ -1,5 +1,4 @@
 import dayjs from 'dayjs'
-import { createMarkdownContent } from './markdown-converter'
 import { getDomain, sanitizeFileName } from './string-utils'
 
 export interface MetaTag {
@@ -10,7 +9,9 @@ export interface MetaTag {
 
 export interface ContentResponse {
 	content: string
+	contentMarkdown: string
 	selectedHtml: string
+	selectionMarkdown: string
 	schemaOrgData: any
 	fullHtml: string
 	title: string
@@ -45,17 +46,13 @@ export function buildVariables(response: ContentResponse, url: string): Record<s
 	variables['{{url}}'] = url
 	variables['{{wordCount}}'] = String(response.wordCount || 0)
 
-	// Content — convert HTML to Markdown
-	const markdownBody = response.content ? createMarkdownContent(response.content, url) : ''
-	variables['{{content}}'] = markdownBody
+	// Content — markdown pre-converted in content script (DOM required)
+	variables['{{content}}'] = response.contentMarkdown || ''
 	variables['{{contentHtml}}'] = response.content || ''
 	variables['{{fullHtml}}'] = response.fullHtml || ''
 
-	// Selection
-	const selectedMarkdown = response.selectedHtml
-		? createMarkdownContent(response.selectedHtml, url)
-		: ''
-	variables['{{selection}}'] = selectedMarkdown
+	// Selection — markdown pre-converted in content script
+	variables['{{selection}}'] = response.selectionMarkdown || ''
 	variables['{{selectionHtml}}'] = response.selectedHtml || ''
 
 	// Timestamps

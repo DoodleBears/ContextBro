@@ -1,5 +1,6 @@
 import Defuddle from 'defuddle'
 import type { ContentResponse } from '@/lib/content-extractor'
+import { createMarkdownContent } from '@/lib/markdown-converter'
 import { getDomain } from '@/lib/string-utils'
 
 export default defineContentScript({
@@ -52,9 +53,16 @@ function getPageContent(): ContentResponse {
 	// Build a clean full HTML (no scripts/styles)
 	const fullHtml = getCleanFullHtml()
 
+	// Convert HTML to Markdown here (content script has DOM access)
+	const contentHtml = defuddled.content || ''
+	const contentMarkdown = contentHtml ? createMarkdownContent(contentHtml, document.URL) : ''
+	const selectionMarkdown = selectedHtml ? createMarkdownContent(selectedHtml, document.URL) : ''
+
 	return {
-		content: defuddled.content || '',
+		content: contentHtml,
+		contentMarkdown,
 		selectedHtml,
+		selectionMarkdown,
 		schemaOrgData: defuddled.schemaOrgData || null,
 		fullHtml,
 		title: defuddled.title || document.title || '',
