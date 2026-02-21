@@ -12,7 +12,7 @@
 | Phase | Name | Status | Link |
 |-------|------|--------|------|
 | 1 | WXT 项目搭建 & Core Clipper 功能 | ✅ Completed | [Phase 1 Checklist](#phase-1-checklist) |
-| 2 | Scheduled Context Sharing (Cron) | 🔲 Pending | [Phase 2 Checklist](#phase-2-checklist) |
+| 2 | Scheduled Context Sharing (Cron) | ✅ Completed | [Phase 2 Checklist](#phase-2-checklist) |
 | 3 | Platform Adapters — Twitch & YouTube | 🔲 Pending | [Phase 3 Checklist](#phase-3-checklist) |
 | 4 | Documentation & Launch | 🔲 Pending | [Phase 4 Checklist](#phase-4-checklist) |
 
@@ -75,7 +75,53 @@ Kite-U 已有一个浏览器 Extension（`packages/extension/`）。Context Bro 
 | **移除：AI Interpreter** | LLM prompt 变量 | 移除（Agent 自行处理 context，不在 clipper 内 LLM） |
 | **移除：Reader Mode** | 阅读模式 | 移除（Context Bro 专注于分享，不改变阅读体验） |
 
-### 1.3 技术选型：三种路径对比
+### 1.3 Social Stream Ninja 作为动态上下文参考
+
+[Social Stream Ninja](https://github.com/steveseguin/social_stream) — GPL-3.0, ~1k stars, by Steve Seguin
+
+如果说 Obsidian Web Clipper 解决了"**静态网页阅读上下文**"（Phase 1），那么 Social Stream Ninja (SSN) 是 "**直播/动态实时上下文**"（Phase 3）的最佳架构参考。
+
+SSN 是一个整合了 120+ 直播/社交平台 live chat 的浏览器扩展，其核心价值在于 Steve Seguin 完成了全平台最脏最累的逆向工程——每个平台的 DOM 选择器、MutationObserver 配置、消息归一化逻辑。
+
+**SSN 的核心架构模式（Phase 3 参考）：**
+
+| SSN 能力 | Context Bro Phase 3 中的用途 |
+|----------|----------------------------|
+| **全平台 DOM 选择器字典** — 120+ 平台的 chat container 锚点、消息节点选择器、动态类名 fallback | Twitch/YouTube adapter 的 MutationObserver 目标节点 |
+| **数据归一化 (Normalized Message)** — 不同平台的 chat 统一为标准 JSON（username, message, badges, donation, membership） | `NormalizedChatMessage` 接口设计 |
+| **三层捕获策略** — MutationObserver (主) → WebSocket 拦截 (备) → 轮询 (兜底) | Adapter 的 fallback 策略 |
+| **高频消息节流与批量处理** — 延迟处理队列（20ms tick）、滑动窗口去重（6s）、采样逻辑 | Chat batching + dedup + sampling |
+| **平台 DOM 变更应对** — 级联 selector fallback、多 Observer 策略（Twitch: native/7TV/FFZ 共存） | Adapter 的健壮性设计 |
+| **Generic Heuristic Scraper** — 按域名学习成功的 CSS selector 模式，支持无专用 adapter 的站点 | 未来扩展：通用直播平台支持 |
+
+**⚠️ 许可证差异与使用策略：**
+
+| | Obsidian Web Clipper | Social Stream Ninja |
+|--|---------------------|---------------------|
+| **License** | MIT（可直接复制代码） | **GPL-3.0**（Copyleft） |
+| **使用方式** | 直接抽取 60+ 源码文件到 `src/lib/` | **仅参考架构模式，独立用 TypeScript 重新实现** |
+| **Context Bro 许可证** | MIT（不受影响） | MIT（不受影响——未复制代码） |
+
+**具体策略：**
+- Clone SSN 仓库到本地作为参考（不 fork、不 push、不复制代码）
+- 学习其平台 DOM 选择器（这些是第三方平台 DOM 结构的事实描述，非 SSN 创作）
+- 学习其 MutationObserver 配置策略（工程经验，非版权保护的表达）
+- 学习其消息归一化 schema（数据结构设计，通常不受版权保护）
+- 用 TypeScript 独立实现，采用更现代的架构（WXT Content Script + 类型安全 + 模块化）
+- 结果：比 SSN 的 Vanilla JS 全局脚本有更优雅的架构，且包含更丰富的平台特定信息
+
+**Context Bro 的双引擎架构：**
+
+```
+静态引擎 (Phase 1, Obsidian Clipper MIT)     动态引擎 (Phase 3, SSN-inspired, 独立实现)
+├── Defuddle 内容提取                          ├── Platform Adapter (per-site content script)
+├── Template Engine (AST)                     │   ├── MutationObserver / Poll / WS fallback
+├── 50+ Filters                               │   ├── NormalizedChatMessage schema
+├── CSS Selector / Schema.org 变量            │   └── Batch + sample + dedup
+└── 输出: 静态页面 → JSON → POST               └── 输出: 实时流 → JSON → POST
+```
+
+### 1.4 技术选型：三种路径对比
 
 | 维度 | A. 直接 Fork Obsidian Clipper | B. Plasmo (React) | C. WXT (Vite + React) |
 |------|-------------------------------|--------------------|-----------------------|
@@ -92,7 +138,7 @@ Kite-U 已有一个浏览器 Extension（`packages/extension/`）。Context Bro 
 | **上手成本** | 低（已有代码）但改造多 | 中（新框架学习） | 中（新框架学习） |
 | **长期风险** | 追踪上游 merge conflict | Plasmo 停止维护 / Parcel 债务 | 低（Vite 生态稳定） |
 
-#### ✅ 决定方案：C. WXT + 抽取 Obsidian Clipper 核心逻辑
+#### ✅ 决定方案：C. WXT + 抽取 Obsidian Clipper 核心逻辑 + SSN 架构参考
 
 ```
 决定理由：
@@ -120,35 +166,37 @@ Kite-U 已有一个浏览器 Extension（`packages/extension/`）。Context Bro 
 
 **UI 部分全部用 React 重写**（Popup、Settings、CSUI 浮动按钮），不 fork Obsidian 的 Vanilla TS DOM 代码。
 
-### 1.4 设计理念
+### 1.5 设计理念
 
 ```
 Context Bro = Web Clipper for AI Agents
 
 技术栈:  WXT (Vite) + React + Obsidian Clipper 核心逻辑 (Defuddle, Template Engine)
+参考:    Social Stream Ninja 架构模式 (动态上下文, 独立 TS 实现)
 输出:    网页 → 模板 → JSON → POST 用户自定义 API endpoint(s)
 
 关键设计决策:
 - 独立 Extension，不绑定任何特定后端
 - 多个命名 Endpoints（用户配置 URL + 自定义 Headers）
 - Template-driven payload（模板编译结果即 POST body，用户完全控制 JSON 形状）
+- 双引擎架构：静态引擎 (Obsidian Clipper) + 动态引擎 (SSN-inspired)
 ```
 
-### 1.5 Target Users
+### 1.6 Target Users
 
 | Role | Description | Permissions |
 |------|-------------|-------------|
 | **Agent Owner** | 安装 Context Bro，配置 Allowlist + 模板 + 定时器 | Extension Settings |
 | **Agent (LLM)** | 消费 Context Event，理解用户当前关注 | Event Stream 只读 |
 
-### 1.5 Core Value
+### 1.7 Core Value
 
 1. **低门槛安装**：Web Clipper 心智模型，无需信任 Agent 操作浏览器
 2. **模板驱动**：复用 Obsidian Web Clipper 的强大模板系统，用户可精确控制分享什么
 3. **持续感知**：Cron 定时 + Allowlist，Agent 可以持续感知用户关注的领域
 4. **精确分享**：Highlight Mode 选区分享，CSS Selector 精确提取
-5. **共同体验**：Twitch/YouTube adapter，Agent 和用户一起看直播
-6. **成熟基底**：Fork Obsidian Web Clipper（MIT, 3k+ stars），大幅减少开发量和 bug
+5. **共同体验**：Twitch/YouTube adapter（参考 SSN 架构），Agent 和用户一起看直播
+6. **成熟基底**：静态引擎 fork Obsidian Web Clipper（MIT）；动态引擎参考 Social Stream Ninja 架构模式（独立 TS 实现）
 
 ---
 
@@ -672,28 +720,41 @@ Settings 页面新增两个 tab：
 **Goal:** 新增定时自动分享——Obsidian Web Clipper 没有的核心新功能
 
 **Tasks:**
-- [ ] 新建 `src/managers/allowlist-settings.ts`（Allowlist UI）
-  - Domain CRUD (add / remove / toggle)
-  - 通配符匹配（`*.reddit.com`）
-  - 预设模板（News / Dev / Social / Streaming）
-  - 每个域名可绑定特定 Template
-- [ ] 新建 `src/managers/schedule-settings.ts`（Schedule UI）
-  - 开关 + interval + mode (focused / all_allowed)
-- [ ] 新建 `src/utils/scheduler.ts`（Cron 调度）
-  - `chrome.alarms` API
-  - Tab 查询 → Allowlist 过滤 → 提取 → 模板编译 → 发送
-  - Dedup by content hash
+- [x] 新建 `src/lib/allowlist.ts`（Allowlist 域名匹配）
+  - ✅ 精确域名匹配 + 通配符子域名（`*.reddit.com`）
+  - ✅ 内置预设（Dev / News / Social / Streaming）
+  - ✅ `matchesAllowlist()` 返回匹配的 AllowlistEntry（含绑定 templateId）
+- [x] 新建 `src/components/AllowlistEditor.tsx`（Allowlist UI）
+  - ✅ Domain CRUD（add / remove / enable-disable toggle）
+  - ✅ 预设快捷按钮（一键添加 Dev / News / Social / Streaming 域名组）
+  - ✅ 每个域名可绑定特定 Template（下拉选择）
+- [x] 新建 `src/components/ScheduleEditor.tsx`（Schedule UI）
+  - ✅ Toggle 开关 + interval 选择（5min ~ 2hr）+ mode 单选（focused / all_allowed）
+- [x] 新建 `src/lib/dedup.ts`（SHA-256 内容去重）
+  - ✅ `hasContentChanged(url, content)` — 按 URL 存储 content hash，未变化则跳过
+- [x] 新建 `src/lib/scheduler.ts`（Cron 调度）
+  - ✅ `initScheduler()` — 启动时注册 alarm listener + 恢复已有 alarm
+  - ✅ `updateScheduleConfig()` — 更新配置并同步 Chrome alarm
+  - ✅ Tab 查询 → Allowlist 过滤 → Dedup → 提取 → 模板编译 → 发送
+  - ✅ focused 模式：仅当前窗口活跃 tab
+  - ✅ all_allowed 模式：所有匹配 allowlist 的 tab
+- [x] 更新 Options 页面：新增 Allowlist + Schedule 两个 tab
+- [x] 更新 Background service worker：初始化 scheduler + 处理 `updateSchedule` 消息
 - [x] 新增 `manifest.json` permission: `alarms` — ✅ 已在 Phase 1 初始化时声明
 - [x] 新增 `manifest.json` permission: `tabs` — ✅ 已在 Phase 1 初始化时声明
 
 ### Phase 2 Checklist
 
-- [ ] Allowlist 域名匹配正确（精确 / 通配符 / localhost）
-- [ ] Chrome Alarm 定时触发 → 提取 → Dedup → 发送
-- [ ] 页面未变化时跳过
-- [ ] focused 模式仅提取当前 tab
-- [ ] all_allowed 模式提取所有匹配 tab
-- [ ] 非 Allowlist 域名不被提取
+- [x] Allowlist 域名匹配正确（精确 / 通配符 / localhost）
+- [x] Chrome Alarm 定时触发 → 提取 → Dedup → 发送
+- [x] 页面未变化时跳过（SHA-256 content hash 去重）
+- [x] focused 模式仅提取当前 tab
+- [x] all_allowed 模式提取所有匹配 tab
+- [x] 非 Allowlist 域名不被提取
+- [x] Options 页面 Allowlist tab：CRUD + 预设 + 模板绑定
+- [x] Options 页面 Schedule tab：开关 + interval + mode
+- [x] `pnpm run build` 产出 657 KB Chrome MV3 extension
+- [x] `pnpm run typecheck` + `pnpm run check` 零错误
 
 ### Phase 3: Platform Adapters — Twitch & YouTube
 
