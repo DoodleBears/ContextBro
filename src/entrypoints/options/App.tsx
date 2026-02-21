@@ -1,21 +1,32 @@
 import '@/assets/tailwind.css'
 import { useCallback, useEffect, useState } from 'react'
+import { AllowlistEditor } from '@/components/AllowlistEditor'
 import { EndpointEditor } from '@/components/EndpointEditor'
+import { ScheduleEditor } from '@/components/ScheduleEditor'
 import { TemplateEditor } from '@/components/TemplateEditor'
-import type { ContextBroTemplate, Endpoint } from '@/lib/types'
+import type { ContextBroTemplate, Endpoint, ScheduleConfig } from '@/lib/types'
 
-type Tab = 'endpoints' | 'templates' | 'general'
+type Tab = 'endpoints' | 'templates' | 'allowlist' | 'schedule' | 'general'
+
+const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
+	enabled: false,
+	intervalMinutes: 15,
+	mode: 'focused',
+	allowlist: [],
+}
 
 export default function App() {
 	const [activeTab, setActiveTab] = useState<Tab>('endpoints')
 	const [endpoints, setEndpoints] = useState<Endpoint[]>([])
 	const [templates, setTemplates] = useState<ContextBroTemplate[]>([])
+	const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig>(DEFAULT_SCHEDULE_CONFIG)
 	const [saved, setSaved] = useState(false)
 
 	const loadSettings = useCallback(async () => {
-		const result = await browser.storage.local.get(['endpoints', 'templates'])
+		const result = await browser.storage.local.get(['endpoints', 'templates', 'scheduleConfig'])
 		setEndpoints((result.endpoints as Endpoint[]) || [])
 		setTemplates((result.templates as ContextBroTemplate[]) || [])
+		setScheduleConfig((result.scheduleConfig as ScheduleConfig) || DEFAULT_SCHEDULE_CONFIG)
 	}, [])
 
 	useEffect(() => {
@@ -23,14 +34,24 @@ export default function App() {
 	}, [loadSettings])
 
 	async function save() {
-		await browser.storage.local.set({ endpoints, templates })
+		await browser.storage.local.set({ endpoints, templates, scheduleConfig })
+
+		// Notify background to sync the alarm
+		browser.runtime.sendMessage({ action: 'updateSchedule', config: scheduleConfig })
+
 		setSaved(true)
 		setTimeout(() => setSaved(false), 2000)
+	}
+
+	function updateAllowlist(allowlist: ScheduleConfig['allowlist']) {
+		setScheduleConfig({ ...scheduleConfig, allowlist })
 	}
 
 	const tabs: { id: Tab; label: string }[] = [
 		{ id: 'endpoints', label: 'Endpoints' },
 		{ id: 'templates', label: 'Templates' },
+		{ id: 'allowlist', label: 'Allowlist' },
+		{ id: 'schedule', label: 'Schedule' },
 		{ id: 'general', label: 'General' },
 	]
 
@@ -87,6 +108,29 @@ export default function App() {
 						values.
 					</p>
 					<TemplateEditor templates={templates} onChange={setTemplates} />
+				</div>
+			)}
+
+			{activeTab === 'allowlist' && (
+				<div>
+					<p className="mb-4 text-sm text-gray-500">
+						Domains in the allowlist can be automatically shared on a schedule. Manual clip and
+						selection sharing work on all domains.
+					</p>
+					<AllowlistEditor
+						allowlist={scheduleConfig.allowlist}
+						templates={templates}
+						onChange={updateAllowlist}
+					/>
+				</div>
+			)}
+
+			{activeTab === 'schedule' && (
+				<div>
+					<p className="mb-4 text-sm text-gray-500">
+						Configure automatic sharing of allowlisted pages at regular intervals.
+					</p>
+					<ScheduleEditor config={scheduleConfig} onChange={setScheduleConfig} />
 				</div>
 			)}
 
