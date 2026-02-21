@@ -11,7 +11,7 @@
 
 | Phase | Name | Status | Link |
 |-------|------|--------|------|
-| 1 | WXT 项目搭建 & Core Clipper 功能 | 🔲 Pending | [Phase 1 Checklist](#phase-1-checklist) |
+| 1 | WXT 项目搭建 & Core Clipper 功能 | 🔄 In Progress | [Phase 1 Checklist](#phase-1-checklist) |
 | 2 | Scheduled Context Sharing (Cron) | 🔲 Pending | [Phase 2 Checklist](#phase-2-checklist) |
 | 3 | Platform Adapters — Twitch & YouTube | 🔲 Pending | [Phase 3 Checklist](#phase-3-checklist) |
 | 4 | Documentation & Launch | 🔲 Pending | [Phase 4 Checklist](#phase-4-checklist) |
@@ -623,7 +623,14 @@ Settings 页面新增两个 tab：
 **Goal:** 用 WXT + React 搭建新项目，集成 Obsidian Clipper 核心逻辑，实现基础 clip → Kite-U API
 
 **Tasks:**
-- [ ] `pnpm create wxt@latest context-bro --template react` 初始化项目
+- [x] `pnpm create wxt@latest context-bro --template react` 初始化项目
+  - ✅ WXT 0.20.17 + React 19 + TypeScript 5.9 (strict mode)
+  - ✅ `wxt.config.ts` 配置完成（React module, srcDir, manifest permissions）
+  - ✅ Biome formatter/linter 配置完成（替代 ESLint/Prettier）
+  - ✅ npm scripts: `dev`, `build`, `zip`, `check`, `typecheck`
+  - ✅ Manifest permissions 已声明: `activeTab`, `scripting`, `storage`, `alarms`, `tabs`, `contextMenus`
+  - ✅ Background service worker stub (`src/entrypoints/background/index.ts`)
+  - ✅ Popup React stub (`src/entrypoints/popup/`)
 - [ ] 配置 TailwindCSS v4 + shadcn/ui（与 Kite-U web 一致）
 - [ ] 安装依赖：`defuddle`, `turndown`, `turndown-plugin-gfm`
 - [ ] 从 Obsidian Clipper 抽取核心逻辑到 `src/lib/`（纯 TS，MIT License）
@@ -676,8 +683,8 @@ Settings 页面新增两个 tab：
   - `chrome.alarms` API
   - Tab 查询 → Allowlist 过滤 → 提取 → 模板编译 → 发送
   - Dedup by content hash
-- [ ] 新增 `manifest.json` permission: `alarms`
-- [ ] 新增 `manifest.json` permission: `tabs`（查询 all_allowed tabs 需要）
+- [x] 新增 `manifest.json` permission: `alarms` — ✅ 已在 Phase 1 初始化时声明
+- [x] 新增 `manifest.json` permission: `tabs` — ✅ 已在 Phase 1 初始化时声明
 
 ### Phase 2 Checklist
 
@@ -812,7 +819,7 @@ Settings 页面新增两个 tab：
 
 | # | Question | Status | Decision |
 |---|----------|--------|----------|
-| 1 | Context Bro 独立 repo 还是 monorepo 内的 `packages/context-bro`？ | Open | 倾向独立 repo（独立 CI/CD + Chrome Web Store 发布流程），但需要 Server ingest route 在主 monorepo |
+| 1 | Context Bro 独立 repo 还是 monorepo 内的 `packages/context-bro`？ | ✅ Decided | **独立 repo** — 已创建为独立项目 `ContextBro/`，Server ingest route 在主 monorepo |
 | 2 | 是否保留 Obsidian Web Clipper 的 Side Panel 模式？ | Open | 保留——Chrome Side Panel 适合 live stream 场景（持续可见） |
 | 3 | Obsidian Web Clipper 的 Defuddle 库是否需要 fork？ | Open | 初期直接 `npm install defuddle`（独立包，MIT License）；仅在需要定制时 fork |
 | 4 | 是否允许用户同时发送到 Obsidian 和 Kite-U？（双输出） | Open | 有趣的可能性——保留 `obsidian://` 作为可选输出，让 Context Bro 成为 "universal web clipper"。但会增加复杂度，后续迭代考虑 |
@@ -827,6 +834,7 @@ Settings 页面新增两个 tab：
 |------|--------|---------|
 | 2026-02-22 | Architecture Team / Product | Initial draft — Context Bro as standalone extension, fork of Obsidian Web Clipper |
 | 2026-02-22 | Architecture Team | Tech stack decided: WXT (Vite + React) over direct fork / Plasmo; added §1.3 comparison table; rewrote Phase 1 & project structure |
+| 2026-02-22 | Architecture Team | Progress update: Phase 1 → In Progress; marked project init task as complete (WXT 0.20.17 + React 19 + Biome + manifest permissions); Phase 2 permissions pre-declared in manifest |
 
 ---
 
