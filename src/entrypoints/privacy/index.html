@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Privacy Policy — Context Bro</title>
+		<style>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+				max-width: 640px;
+				margin: 2rem auto;
+				padding: 0 1rem;
+				color: #1a1a1a;
+				line-height: 1.6;
+			}
+			h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+			h2 { font-size: 1.1rem; margin-top: 1.5rem; }
+			p, ul { font-size: 0.95rem; }
+			ul { padding-left: 1.5rem; }
+			.updated { color: #666; font-size: 0.85rem; margin-bottom: 2rem; }
+			a { color: #2563eb; }
+		</style>
+	</head>
+	<body>
+		<h1>Context Bro — Privacy Policy</h1>
+		<p class="updated">Last updated: February 22, 2026</p>
+
+		<h2>Overview</h2>
+		<p>
+			Context Bro is a browser extension that helps you share web page context
+			with AI agents. Your privacy is central to its design — the extension
+			follows an <strong>allowlist-first, share-nothing-by-default</strong> model.
+		</p>
+
+		<h2>Data We Collect</h2>
+		<p><strong>None.</strong> Context Bro does not collect, transmit, or store any data on our servers. We have no servers. All configuration (endpoints, templates, allowlist) is stored locally in your browser via <code>chrome.storage.local</code>.</p>
+
+		<h2>Data You Choose to Share</h2>
+		<p>When you explicitly share a page (via the popup, context menu, keyboard shortcut, or floating button), the extension:</p>
+		<ul>
+			<li>Extracts page content from the active tab</li>
+			<li>Compiles it using your configured template</li>
+			<li>Sends the compiled payload to <strong>your own API endpoint</strong> — a URL you configured yourself</li>
+		</ul>
+		<p>The extension never sends data anywhere unless you have configured an endpoint and triggered a share action.</p>
+
+		<h2>Scheduled Sharing</h2>
+		<p>If you enable scheduled sharing, the extension will periodically extract content <strong>only from domains you explicitly added to your Allowlist</strong>. Content is deduplicated (via SHA-256 hashing stored locally) to avoid sending unchanged pages.</p>
+
+		<h2>Live Stream Adapters</h2>
+		<p>On Twitch and YouTube live pages, optional adapters observe chat messages visible in your browser. Chat batches are sent to your configured endpoint. The adapters only activate on matching pages and can be disabled by not loading the extension on those sites.</p>
+
+		<h2>Permissions Explained</h2>
+		<ul>
+			<li><strong>activeTab</strong> — Read the current tab when you click Share</li>
+			<li><strong>scripting</strong> — Inject the content extraction script</li>
+			<li><strong>storage</strong> — Save your settings locally</li>
+			<li><strong>alarms</strong> — Power scheduled sharing intervals</li>
+			<li><strong>tabs</strong> — Query open tabs for scheduled extraction</li>
+			<li><strong>contextMenus</strong> — Add "Share to Context Bro" to the right-click menu</li>
+		</ul>
+
+		<h2>Third-Party Services</h2>
+		<p>Context Bro does not integrate with any third-party analytics, tracking, or advertising services. The only network requests are to endpoints you configure.</p>
+
+		<h2>Data Retention</h2>
+		<p>All data is stored locally in your browser. Uninstalling the extension removes all stored data. You can also clear data via Settings at any time.</p>
+
+		<h2>Open Source</h2>
+		<p>Context Bro is open source. You can review the full source code to verify these claims.</p>
+
+		<h2>Contact</h2>
+		<p>If you have questions about this privacy policy, please open an issue on the project's GitHub repository.</p>
+	</body>
+</html>

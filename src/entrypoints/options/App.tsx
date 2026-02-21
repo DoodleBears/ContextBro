@@ -152,6 +152,16 @@ export default function App() {
 						<h3 className="mb-2 text-sm font-medium text-gray-900">About</h3>
 						<p className="text-sm text-gray-500">Context Bro — Web Clipper for AI Agents.</p>
 						<p className="mt-1 text-xs text-gray-400">Your AI&apos;s eyes on the web.</p>
+						<p className="mt-2">
+							<a
+								href={browser.runtime.getURL('/privacy.html' as '/options.html')}
+								target="_blank"
+								rel="noreferrer"
+								className="text-xs text-blue-600 hover:underline"
+							>
+								Privacy Policy
+							</a>
+						</p>
 					</div>
 				</div>
 			)}
