@@ -18,7 +18,7 @@ async function sha256(content: string): Promise<string> {
 export async function hasContentChanged(url: string, content: string): Promise<boolean> {
 	const hash = await sha256(content)
 	const stored = await browser.storage.local.get(STORAGE_KEY)
-	const hashes: Record<string, string> = stored[STORAGE_KEY] || {}
+	const hashes = (stored[STORAGE_KEY] || {}) as Record<string, string>
 
 	if (hashes[url] === hash) {
 		return false
