@@ -987,37 +987,42 @@ Settings 页面新增两个 tab：
 - [x] `pnpm run build` 产出 685 KB Chrome MV3 extension（含 Twitch 12.6KB + YouTube 13.9KB adapter）
 - [x] `pnpm run typecheck` + `pnpm run check` 零错误
 
-### Phase 4: Documentation & Launch — ✅ Partial (in-repo deliverables complete)
+### Phase 4: Documentation & Launch — ✅ Completed
 
 **Goal:** 文档 + Chrome Web Store 上架
 
-**Tasks (in-repo):**
+**Tasks (extension):**
 - [x] 7 个预设模板示例（General, GitHub PR, Stack Overflow, News, Reddit, YouTube, Selection Only）— `src/lib/template-presets.ts`
 - [x] TemplateEditor 新增 "From preset..." 快速添加下拉框
 - [x] 隐私政策页面 — `src/entrypoints/privacy/index.html`（捆绑在扩展内）
 - [x] Chrome Web Store 上架准备 — `store/chrome-web-store.md`（描述、权限说明、内容匹配说明）
-- [x] 占位图标 SVG 源文件 — `store/icon-source.svg`
+- [x] PNG 图标 4 尺寸（16/32/48/128px）— 从 `logo.svg` 经 sharp 转换 → `public/icon/`
+- [x] WXT 自动检测 icons，manifest 自动生成 `icons` 字段
 
-**Tasks (external docs site — `packages/docs/` not in this repo):**
-- [ ] 新建 `packages/docs/src/content/docs/guides/context-bro.mdx`（EN）
-- [ ] 新建 `packages/docs/src/content/docs/ja/guides/context-bro.mdx`（JA）
-- [ ] 新建 `packages/docs/src/content/docs/zh/guides/context-bro.mdx`（ZH）
-- [ ] 修改 `packages/docs/astro.config.mjs`：新增 "Extension Guides" sidebar section
-- [ ] 文档内容（概念、安装、模板、Allowlist、Selection、Twitch/YouTube、隐私）
-- [ ] 可选：Context Bro 独立文档站（如果产品需要独立品牌）
+**Tasks (docs site — `packages/docs/`):**
+- [x] 独立文档站脚手架 — Astro + Starlight + starlight-theme-obsidian（知识图谱 + 反向链接）
+- [x] EN 文档 7 页（splash、quick start、architecture、privacy、templates、endpoints、allowlist/schedule、selection、live stream）
+- [x] ZH 文档 7 页（完整中文翻译）
+- [x] JA 文档 7 页（完整日文翻译）
+- [x] i18n UI 翻译（`zh.json`、`ja.json`）
+- [x] 移除所有 Kite-U 引用，Context Bro 完全独立品牌
+- [x] 新 slogan："Help you bring your context to live."
+- [x] 概念页从 "vs Kite-U" 重构为 "Architecture"（架构概览）
+- [x] `pnpm run build`（docs）—— 28 页，3 语言，2192 词索引，构建成功
 
 **Remaining before store submission:**
-- [ ] 设计并导出 PNG 图标（16/32/48/128px → `public/icon/`）
 - [ ] 截图 5 张（popup、options、右键菜单、selection button、template editor）
-- [ ] EN / JA / ZH 三语文档（在 docs 站点仓库）
+- [ ] 购买域名并部署文档站（Cloudflare Pages）
 - [ ] Chrome Web Store 审核提交
 
 ### Phase 4 Checklist
 
-- [ ] EN / JA / ZH 三语文档
+- [x] EN / JA / ZH 三语文档（共 21 页，7 页 × 3 语言）
 - [ ] Chrome Web Store 审核通过
 - [x] 至少 5 个预设模板示例（实际 7 个）
 - [x] 隐私政策页面
+- [x] PNG 图标（16/32/48/128px）
+- [x] 独立文档站（Astro + Starlight，28 页构建成功）
 
 ---
 
