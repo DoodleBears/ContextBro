@@ -1,7 +1,8 @@
 import { sendToEndpoint } from '@/lib/api/send'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
+import { initScheduler, updateScheduleConfig } from '@/lib/scheduler'
 import { compileTemplate } from '@/lib/template-engine/compiler'
-import type { ContextBroTemplate, Endpoint } from '@/lib/types'
+import type { ContextBroTemplate, Endpoint, ScheduleConfig } from '@/lib/types'
 
 const DEFAULT_TEMPLATE: ContextBroTemplate = {
 	id: 'default',
@@ -21,6 +22,13 @@ const DEFAULT_TEMPLATE: ContextBroTemplate = {
 
 export default defineBackground(() => {
 	console.log('Context Bro background service worker started')
+
+	// Initialize the scheduled extraction system
+	initScheduler({
+		ensureContentScript,
+		getEndpoints,
+		getTemplate,
+	})
 
 	// Set up context menus
 	browser.runtime.onInstalled.addListener(() => {
@@ -69,6 +77,11 @@ export default defineBackground(() => {
 
 		if (message.action === 'compilePreview') {
 			handleCompilePreview(message.tabId, message.templateId).then(sendResponse)
+			return true
+		}
+
+		if (message.action === 'updateSchedule') {
+			updateScheduleConfig(message.config as ScheduleConfig).then(sendResponse)
 			return true
 		}
 	})
