@@ -1,0 +1,86 @@
+---
+import TableOfContents from 'virtual:starlight/components/TableOfContents'
+import { Graph, PageBacklinks } from 'starlight-site-graph/components'
+import siteGraphConfig from 'virtual:starlight-site-graph/config'
+import astroConfig from 'virtual:starlight-site-graph/astro-config'
+
+const usesTrailingSlash = astroConfig.trailingSlash !== 'never'
+let graphSlug = Astro.url.pathname.replace(/\\/g, '/').replace(/^\/+/, '')
+if (usesTrailingSlash) {
+  graphSlug = graphSlug.endsWith('/') ? graphSlug : `${graphSlug}/`
+} else {
+  graphSlug = graphSlug.endsWith('/') ? graphSlug.slice(0, -1) : graphSlug
+}
+---
+
+<div class="right-sidebar-panel slsg-graph-panel">
+  <h2 class="graph-title">{Astro.locals.t('starlight-site-graph.graph')}</h2>
+  <script is:inline>
+    if (!globalThis.process) {
+      globalThis.process = { env: {}, platform: 'browser' };
+    }
+    if (!globalThis.global) {
+      globalThis.global = globalThis;
+    }
+  </script>
+  <Graph
+    slug={graphSlug}
+    sitemap={siteGraphConfig.sitemapConfig?.sitemap ?? {}}
+    config={siteGraphConfig.graphConfig}
+    debug={siteGraphConfig.debug ?? false}
+    trailingSlashes={usesTrailingSlash}
+  />
+</div>
+
+{
+  Astro.locals.starlightRoute.toc && (
+    <>
+      <div class="right-sidebar-panel sl-hidden lg:sl-block">
+        <div class="sl-container">
+          <TableOfContents />
+        </div>
+      </div>
+    </>
+  )
+}
+
+<PageBacklinks class="right-sidebar-panel slsg-backlinks-panel">
+  <h2 slot="title">{Astro.locals.t('starlight-site-graph.backlinks')}</h2>
+</PageBacklinks>
+
+<style>
+  @layer starlight.core {
+    .right-sidebar-panel {
+      padding: 1rem var(--sl-sidebar-pad-x);
+    }
+    .sl-container {
+      width: calc(var(--sl-sidebar-width) - 2 * var(--sl-sidebar-pad-x));
+    }
+    .slsg-graph-panel .graph-title {
+      display: none;
+    }
+    .right-sidebar-panel :global(h2) {
+      color: var(--sl-color-white);
+      font-size: var(--sl-text-h5);
+      font-weight: 600;
+      line-height: var(--sl-line-height-headings);
+      margin-bottom: 0.5rem;
+    }
+    .right-sidebar-panel :global(:where(a)) {
+      display: block;
+      font-size: var(--sl-text-xs);
+      text-decoration: none;
+      color: var(--sl-color-gray-3);
+      overflow-wrap: anywhere;
+    }
+    .right-sidebar-panel :global(:where(a):hover) {
+      color: var(--sl-color-white);
+    }
+    @media (min-width: 72rem) {
+      .sl-container {
+        max-width: calc((((100vw - var(--sl-sidebar-width) - 2 * var(--sl-content-pad-x) - 2 *
+          var(--sl-sidebar-pad-x)) * 0.25)));
+      }
+    }
+  }
+</style>

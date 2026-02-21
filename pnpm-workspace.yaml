@@ -1,1 +1,6 @@
-onlyBuiltDependencies: esbuild
+packages:
+  - "packages/*"
+
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
