@@ -1,0 +1,46 @@
+---
+title: 什么是 Context Bro?
+description: AI Agent 的 Web Clipper —— 通过自定义 API 端点与 AI 伙伴分享浏览上下文。
+template: splash
+hero:
+  tagline: 你的 AI 在网络上的眼睛。
+  actions:
+    - text: 快速开始
+      link: /zh/getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: 核心概念
+      link: /zh/concepts/context-bro-vs-kite-u/
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components'
+
+## Context Bro 做什么？
+
+Context Bro 是一个浏览器扩展，**将网页内容提取并发送到任意 API 端点** —— 专为 AI Agent 工作流设计。
+
+与传统的网页剪藏工具（保存到笔记应用）不同，Context Bro 将结构化数据发送到**你自己的 API**，让 AI Agent 实时获取你正在浏览的内容。
+
+<CardGrid>
+  <Card title="模板驱动" icon="document">
+    使用 `｛｛变量｝｝` 和 50+ 过滤器完全控制 JSON 负载格式。
+  </Card>
+  <Card title="多端点" icon="rocket">
+    配置多个命名 API 目标，每个支持自定义 Headers —— 工作、个人、研究。
+  </Card>
+  <Card title="隐私优先" icon="approve-check">
+    允许列表优先模型。默认：不分享任何内容。无分析、无追踪。
+  </Card>
+  <Card title="直播聊天" icon="star">
+    捕获 Twitch 和 YouTube 直播聊天消息、打赏和订阅。
+  </Card>
+</CardGrid>
+
+## 核心功能
+
+- **一键分享** —— 弹出窗口、右键菜单、键盘快捷键或浮动按钮
+- **7 个预设模板** —— 通用、GitHub PR、Stack Overflow、新闻、Reddit、YouTube、选区
+- **定时自动分享** —— 在可配置的间隔内自动提取允许列表域名的内容（含去重）
+- **平台适配器** —— Twitch 和 YouTube 直播聊天，优先级采样
+- **完全开源** —— MIT 许可证，无服务端组件

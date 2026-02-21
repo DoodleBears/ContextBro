@@ -1,0 +1,57 @@
+---
+title: API 端点
+description: 配置 Context Bro 发送页面上下文的 API 端点 —— 支持自定义 Headers 用于认证。
+---
+
+## 什么是端点？
+
+端点是一个 **HTTP POST URL**，Context Bro 将编译后的模板内容发送到这里。你可以在设置中配置端点：
+
+- **名称** —— 友好标签（如"工作 API"、"个人知识库"）
+- **URL** —— POST 目标地址
+- **Headers** —— 自定义 HTTP 头部键值对
+- **启用** —— 开关切换
+
+## 设置端点
+
+1. 打开 Context Bro **设置**（弹出窗口中的齿轮图标，或右键 → Options）
+2. 进入 **Endpoints** 标签页
+3. 点击 **+ Add endpoint**
+4. 填写信息：
+
+| 字段 | 示例 |
+|------|------|
+| Name | `我的 AI Agent` |
+| URL | `https://api.example.com/context` |
+| Headers | `Authorization: Bearer sk-xxx` |
+| | `Content-Type: application/json` |
+
+5. 切换为 **已启用**
+6. 点击 **Save**
+
+## 自定义 Headers
+
+Headers 是完全灵活的键值对。常见用法：
+
+```
+Authorization: Bearer YOUR_TOKEN
+X-API-Key: YOUR_KEY
+Content-Type: application/json
+X-Source: context-bro
+```
+
+每个端点有独立的 Headers，可以为不同目标使用不同认证。
+
+## 多端点
+
+你可以配置多个端点。在弹出窗口中，使用 **Endpoint** 下拉框选择发送目标。
+
+快捷分享（键盘快捷键、右键菜单、浮动按钮）使用**第一个已启用的端点**。
+
+## 测试
+
+使用 `https://httpbin.org/post` 作为测试端点 —— 它会完整回显请求内容。在浏览器的网络标签页中验证 payload 是否符合你的模板。
+
+## 发送内容格式
+
+编译后的模板输出作为**原始 POST body** 发送（非表单编码）。端点配置中的 `Content-Type` 头部决定服务器如何解析。

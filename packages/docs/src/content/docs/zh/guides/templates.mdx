@@ -1,0 +1,97 @@
+---
+title: 模板配置
+description: 使用带有变量和过滤器的模板控制发送到 API 的 JSON 格式。
+---
+
+## 模板工作原理
+
+模板定义了发送到 API 端点的 **POST body**。你编写 JSON 结构，使用 `{{变量}}` 作为占位符，分享时会被提取的页面数据替换。
+
+## 内置变量
+
+| 变量 | 说明 |
+|------|------|
+| `{{title}}` | 页面标题 |
+| `{{url}}` | 完整页面 URL |
+| `{{content}}` | Markdown 格式的主要内容 |
+| `{{author}}` | 页面作者（来自 meta 标签） |
+| `{{published}}` | 发布日期 |
+| `{{domain}}` | 域名（如 `github.com`） |
+| `{{description}}` | Meta 描述 |
+| `{{wordCount}}` | 主要内容的字数 |
+| `{{date}}` | 当前日期（YYYY-MM-DD） |
+| `{{time}}` | 当前时间（HH:mm） |
+| `{{selection}}` | Markdown 格式的选中文本 |
+| `{{selectionHtml}}` | HTML 格式的选中文本 |
+| `{{image}}` | 主图 URL |
+| `{{favicon}}` | 网站图标 URL |
+| `{{site}}` | 网站名称 |
+| `{{fullHtml}}` | 完整页面 HTML |
+| `{{contentHtml}}` | HTML 格式的主要内容 |
+
+## CSS 选择器变量
+
+你可以从页面中提取特定元素：
+
+```
+{{selector:h1.title}}              → 文本内容
+{{selector:.author@href}}          → 属性值
+{{selector:.tag|list}}             → 所有匹配项作为数组
+{{selector:#content|markdown}}     → 转换为 Markdown
+```
+
+## 过滤器
+
+使用 `|` 链接过滤器来转换值：
+
+```
+{{title|truncate:100}}
+{{content|replace:foo:bar}}
+{{url|split:/|last}}
+{{published|date:YYYY-MM-DD}}
+{{selector:.tags|list|join:, }}
+```
+
+Context Bro 包含 50+ 过滤器，继承自 [Obsidian Web Clipper](https://github.com/obsidianmd/obsidian-clipper)。
+
+## 预设模板
+
+Context Bro 内置 7 个预设模板，可一键添加：
+
+| 预设 | 触发模式 | 用途 |
+|------|---------|------|
+| **General Page** | — | 任意页面的默认模板 |
+| **GitHub PR / Issue** | `github.com/*/pull/*` 等 | GitHub PR 和 Issue |
+| **Stack Overflow Q&A** | `stackoverflow.com/questions/*` | 问答及采纳答案 |
+| **News Article** | `*.reuters.com/*` 等 | 新闻站点 |
+| **Reddit Post** | `*.reddit.com/r/*/comments/*` | Reddit 讨论 |
+| **YouTube Video** | `youtube.com/watch*` 等 | YouTube 视频 |
+| **Selection Only** | — | 仅选中文本 + 来源 |
+
+添加预设：**设置 → Templates → "From preset..."** 下拉框。
+
+## 触发模式
+
+模板可以设置 URL 触发模式。分享页面时，Context Bro 会自动选择触发模式匹配当前 URL 的模板。
+
+模式支持通配符：
+
+```
+github.com/*/pull/*     → 匹配任何 GitHub PR
+*.reddit.com/*          → 匹配任何 Reddit 页面
+stackoverflow.com/*     → 匹配 Stack Overflow
+```
+
+## 示例：自定义模板
+
+```json
+{
+  "type": "research",
+  "title": "{{title}}",
+  "url": "{{url}}",
+  "summary": "{{description}}",
+  "content": "{{content|truncate:5000}}",
+  "tags": "{{selector:meta[name='keywords']@content|split:,}}",
+  "capturedAt": "{{date}}T{{time}}:00Z"
+}
+```

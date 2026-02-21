@@ -1,0 +1,49 @@
+---
+title: 选区分享
+description: 通过浮动按钮、键盘快捷键或右键菜单分享任意页面的选中文本。
+---
+
+## 选区分享方式
+
+当你在任意网页上选中文本时，有三种方式分享选区：
+
+### 浮动按钮
+
+选中文本附近会出现一个小按钮。点击它可立即将选中文本发送到默认端点。
+
+取消选区时按钮自动隐藏。
+
+### 键盘快捷键
+
+按 `Ctrl+Shift+K`（Mac 上为 `Cmd+Shift+K`）分享当前选区。
+
+可在浏览器扩展设置中自定义此快捷键（`chrome://extensions/shortcuts`）。
+
+### 右键菜单
+
+右键选中文本 → **Share selection to Context Bro**。
+
+## 分享的内容
+
+分享选区时，`{{selection}}` 和 `{{selectionHtml}}` 模板变量会填入选中文本。`{{content}}` 变量仍包含完整页面内容。
+
+如果你想要一个只发送选区的模板，使用 **Selection Only** 预设：
+
+```json
+{
+  "selection": "{{selection}}",
+  "sourceUrl": "{{url}}",
+  "sourceTitle": "{{title}}",
+  "clippedAt": "{{date}} {{time}}"
+}
+```
+
+## 完整页面 vs 选区
+
+| 变量 | 有选区时 | 无选区时 |
+|------|---------|---------|
+| `{{content}}` | 完整页面内容 | 完整页面内容 |
+| `{{selection}}` | 选中文本（Markdown） | 空字符串 |
+| `{{selectionHtml}}` | 选中文本（HTML） | 空字符串 |
+
+`{{content}}` 和 `{{selection}}` 始终可用 —— 由你的模板决定包含哪个。

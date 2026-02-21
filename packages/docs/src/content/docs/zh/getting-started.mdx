@@ -1,0 +1,69 @@
+---
+title: 快速开始
+description: 安装 Context Bro，配置端点，2 分钟内分享你的第一个页面。
+---
+
+## 安装
+
+### 从 Chrome Web Store 安装
+
+1. 访问 [Chrome Web Store 上的 Context Bro 页面](#)（即将上线）
+2. 点击 **添加到 Chrome**
+3. 将扩展固定到工具栏以便快速访问
+
+### 从源码安装（开发者）
+
+```bash
+git clone https://github.com/DoodleBears/ContextBro.git
+cd ContextBro
+pnpm install
+pnpm run build
+```
+
+然后在 `chrome://extensions` 中以开发者模式加载 `.output/chrome-mv3/` 目录。
+
+## 配置第一个端点
+
+1. 点击 Context Bro 图标 → **设置**（齿轮图标）
+2. 进入 **Endpoints** 标签页
+3. 点击 **+ Add endpoint**
+4. 输入名称（如"我的 API"）、POST URL 和所需的 Headers
+5. 切换为 **已启用**
+6. 点击 **Save**
+
+测试时可以使用 `https://httpbin.org/post` —— 它会回显你发送的所有内容。
+
+## 分享页面
+
+配置好端点后，有多种分享方式：
+
+| 方式 | 操作 |
+|------|------|
+| **弹出窗口** | 点击扩展图标 → **Share** |
+| **右键菜单** | 右键 → **Share page to Context Bro** |
+| **快捷键** | `Ctrl+Shift+K`（Mac 上为 `Cmd+Shift+K`） |
+| **浮动按钮** | 选中任意页面文本 → 点击浮动按钮 |
+
+## 发送的内容
+
+默认情况下，Context Bro 提取页面并编译为如下 JSON：
+
+```json
+{
+  "title": "How to fix CORS in Vite",
+  "url": "https://stackoverflow.com/q/12345",
+  "content": "完整文章的 Markdown 文本...",
+  "author": "johndoe",
+  "domain": "stackoverflow.com",
+  "wordCount": 1234,
+  "clippedAt": "2026-02-22 14:30"
+}
+```
+
+你可以通过[模板配置](/zh/guides/templates/)完全自定义这个格式。
+
+## 下一步
+
+- [配置自定义模板](/zh/guides/templates/)控制 payload 格式
+- [设置允许列表](/zh/guides/allowlist-schedule/)启用定时自动分享
+- [了解直播适配器](/zh/guides/live-stream/)支持 Twitch 和 YouTube

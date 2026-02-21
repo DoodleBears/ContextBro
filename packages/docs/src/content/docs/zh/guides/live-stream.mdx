@@ -1,0 +1,95 @@
+---
+title: Twitch / YouTube 直播
+description: 捕获直播聊天消息、打赏和订阅供 AI 处理。
+---
+
+## 概览
+
+Context Bro 内置 **Twitch** 和 **YouTube Live** 平台适配器，实时观察聊天消息并将批次发送到配置的端点。
+
+适配器活跃时，扩展徽章显示 📡。
+
+## 工作原理
+
+1. 导航到 Twitch 频道或 YouTube 直播/视频页面
+2. 适配器自动激活并开始观察聊天 DOM
+3. 聊天消息在滑动窗口中收集
+4. 每 **30 秒**编译一个批次并发送到默认端点
+5. 离开页面时适配器自动清理
+
+## 聊天批次格式
+
+每个批次包含标准化的聊天消息：
+
+```json
+{
+  "event_type": "live_stream",
+  "platform": "twitch",
+  "channel": "streamer_name",
+  "title": "直播标题",
+  "category": "Just Chatting",
+  "viewers": 12345,
+  "isLive": true,
+  "totalMessages": 250,
+  "sampledMessages": 100,
+  "messages": [
+    {
+      "user": "viewer123",
+      "message": "你好！",
+      "roles": ["subscriber"],
+      "event": "chat"
+    }
+  ],
+  "donations": 3,
+  "memberships": 1,
+  "timestamp": "2026-02-22T14:30:00Z"
+}
+```
+
+## 优先级采样
+
+当聊天繁忙时（每批 >100 条消息），Context Bro 使用优先级采样：
+
+1. **付费消息**（打赏、bits、Super Chat）—— 始终包含
+2. **管理员和主播消息** —— 始终包含
+3. **普通消息** —— 随机采样至 100 条上限
+
+确保重要事件不会丢失。
+
+## Twitch 适配器
+
+支持：
+- 原生 Twitch 聊天、7TV 和 FrankerFaceZ (FFZ) DOM 变体
+- 聊天消息、订阅、赠送订阅、raid、bits
+- 管理员/VIP/主播角色检测
+- 删除消息检测
+
+## YouTube 适配器
+
+支持：
+- 直播聊天消息（文本、付费、贴纸、会员、礼物）
+- Super Chat 和 Super Sticker 金额（多币种）
+- 新会员、续费和礼物事件
+- VOD 字幕/转录追踪（5 秒轮询间隔）
+
+### YouTube 转录
+
+对于 VOD 页面，YouTube 适配器还追踪字幕/转录：
+
+```json
+{
+  "event_type": "transcript",
+  "platform": "youtube",
+  "videoId": "dQw4w9WgXcQ",
+  "title": "视频标题",
+  "channel": "频道名称",
+  "text": "转录文本...",
+  "currentTime": 125.5,
+  "duration": 3600,
+  "timestamp": "2026-02-22T14:30:00Z"
+}
+```
+
+## 去重
+
+滑动窗口去重（10 秒窗口）防止 DOM 快速更新时的重复消息。消息以 `platform-username-messagePrefix` 为键。
