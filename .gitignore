@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# WXT output
+.output/
+.wxt/
+
+# Build
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Cursor ignore artifacts
+.cursor/ignore/*.txt
+.cursor/ignore/*.md
+!.cursor/ignore/.gitkeep

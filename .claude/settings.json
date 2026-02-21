@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run check:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npx biome check:*)",
+      "Bash(npx biome format:*)",
+      "Bash(npx wxt:*)",
+      "Bash(npm install:*)",
+      "Bash(npm:*)",
+      "Bash(npx tsc:*)",
+      "Bash(find:*)",
+      "Bash(git -C /home/doodlebear/project/ContextBro log --oneline -10)",
+      "WebFetch(domain:wxt.dev)",
+      "WebFetch(domain:developer.chrome.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.npmjs.com)"
+    ]
+  }
+}
