@@ -1,0 +1,69 @@
+---
+title: クイックスタート
+description: Context Broをインストールし、エンドポイントを設定して、2分以内に最初のページを共有。
+---
+
+## インストール
+
+### Chrome Web Storeから
+
+1. [Chrome Web StoreのContext Broページ](#)にアクセス（近日公開）
+2. **Chromeに追加**をクリック
+3. ツールバーに拡張機能をピン留め
+
+### ソースコードから（開発者向け）
+
+```bash
+git clone https://github.com/DoodleBears/ContextBro.git
+cd ContextBro
+pnpm install
+pnpm run build
+```
+
+`chrome://extensions` で `.output/chrome-mv3/` ディレクトリを読み込みます。
+
+## 最初のエンドポイントを設定
+
+1. Context Broアイコン → **設定**（歯車アイコン）をクリック
+2. **Endpoints** タブに移動
+3. **+ Add endpoint** をクリック
+4. 名前（例：「マイAPI」）、POST URL、ヘッダーを入力
+5. **有効** に切り替え
+6. **Save** をクリック
+
+テスト用には `https://httpbin.org/post` を使用できます — 送信内容がすべてエコーバックされます。
+
+## ページを共有
+
+エンドポイントが設定されたら、いくつかの方法で共有できます：
+
+| 方法 | 操作 |
+|------|------|
+| **ポップアップ** | 拡張機能アイコン → **Share** |
+| **コンテキストメニュー** | 右クリック → **Share page to Context Bro** |
+| **キーボードショートカット** | `Ctrl+Shift+K`（Macは `Cmd+Shift+K`） |
+| **フローティングボタン** | テキストを選択 → フローティングボタンをクリック |
+
+## 送信される内容
+
+デフォルトでは、Context Broはページを抽出して以下のようなJSONにコンパイルします：
+
+```json
+{
+  "title": "How to fix CORS in Vite",
+  "url": "https://stackoverflow.com/q/12345",
+  "content": "記事全文のMarkdownテキスト...",
+  "author": "johndoe",
+  "domain": "stackoverflow.com",
+  "wordCount": 1234,
+  "clippedAt": "2026-02-22 14:30"
+}
+```
+
+[テンプレート](/ja/guides/templates/)でこの形式を完全にカスタマイズできます。
+
+## 次のステップ
+
+- [カスタムテンプレートを設定](/ja/guides/templates/)してペイロード形式を制御
+- [Allowlistを設定](/ja/guides/allowlist-schedule/)して定期自動共有を有効化
+- [ライブ配信アダプター](/ja/guides/live-stream/)でTwitchとYouTubeをサポート

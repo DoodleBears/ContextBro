@@ -1,0 +1,46 @@
+---
+title: Context Broとは?
+description: AI Agentのためのウェブクリッパー — カスタムAPIエンドポイントを通じてブラウジングコンテキストをAIコンパニオンに共有。
+template: splash
+hero:
+  tagline: あなたのAIのウェブ上の目。
+  actions:
+    - text: クイックスタート
+      link: /ja/getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: コアコンセプト
+      link: /ja/concepts/context-bro-vs-kite-u/
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components'
+
+## Context Broは何をするの？
+
+Context Broは、**ウェブページをクリップして任意のAPIエンドポイントに送信する**ブラウザ拡張機能です — AI Agentワークフロー向けに設計されています。
+
+ノートアプリに保存する従来のウェブクリッパーとは異なり、Context Broは**あなた自身のAPI**に構造化データを送信し、AI Agentがブラウジング内容にリアルタイムでアクセスできるようにします。
+
+<CardGrid>
+  <Card title="テンプレート駆動" icon="document">
+    `{{変数}}`と50以上のフィルターでJSONペイロードの形状を完全制御。
+  </Card>
+  <Card title="複数エンドポイント" icon="rocket">
+    カスタムヘッダー付きの名前付きAPIターゲットを設定 — 仕事、個人、研究。
+  </Card>
+  <Card title="プライバシーファースト" icon="approve-check">
+    Allowlistファーストモデル。デフォルト：何も共有しない。分析・追跡なし。
+  </Card>
+  <Card title="ライブ配信" icon="star">
+    TwitchとYouTubeのライブチャットメッセージ、投げ銭、サブスクを取得。
+  </Card>
+</CardGrid>
+
+## 主な機能
+
+- **ワンクリック共有** — ポップアップ、コンテキストメニュー、キーボードショートカット、フローティングボタン
+- **7つのプリセットテンプレート** — 汎用、GitHub PR、Stack Overflow、ニュース、Reddit、YouTube、選択テキスト
+- **定期自動共有** — 設定可能な間隔でAllowlistドメインを自動抽出（重複排除あり）
+- **プラットフォームアダプター** — TwitchとYouTubeライブチャット（優先度サンプリング）
+- **完全オープンソース** — MITライセンス、サーバーサイドコンポーネントなし

@@ -1,0 +1,97 @@
+---
+title: テンプレート
+description: 変数とフィルターを使ったテンプレートでAPIに送信されるJSON形式を制御。
+---
+
+## テンプレートの仕組み
+
+テンプレートはAPIエンドポイントに送信される**POSTボディ**を定義します。`{{変数}}`を使ってJSON構造を書き、共有時に抽出されたページデータで置換されます。
+
+## 組み込み変数
+
+| 変数 | 説明 |
+|------|------|
+| `{{title}}` | ページタイトル |
+| `{{url}}` | 完全なページURL |
+| `{{content}}` | Markdown形式のメインコンテンツ |
+| `{{author}}` | ページ著者（metaタグから） |
+| `{{published}}` | 公開日 |
+| `{{domain}}` | ドメイン名（例：`github.com`） |
+| `{{description}}` | メタ説明 |
+| `{{wordCount}}` | メインコンテンツの語数 |
+| `{{date}}` | 現在の日付（YYYY-MM-DD） |
+| `{{time}}` | 現在の時刻（HH:mm） |
+| `{{selection}}` | Markdown形式の選択テキスト |
+| `{{selectionHtml}}` | HTML形式の選択テキスト |
+| `{{image}}` | メイン画像URL |
+| `{{favicon}}` | サイトファビコンURL |
+| `{{site}}` | サイト名 |
+| `{{fullHtml}}` | 完全なページHTML |
+| `{{contentHtml}}` | HTML形式のメインコンテンツ |
+
+## CSSセレクター変数
+
+ページから特定の要素を抽出できます：
+
+```
+{{selector:h1.title}}              → テキスト内容
+{{selector:.author@href}}          → 属性値
+{{selector:.tag|list}}             → すべてのマッチを配列として
+{{selector:#content|markdown}}     → Markdownに変換
+```
+
+## フィルター
+
+`|` でフィルターをチェーンして値を変換：
+
+```
+{{title|truncate:100}}
+{{content|replace:foo:bar}}
+{{url|split:/|last}}
+{{published|date:YYYY-MM-DD}}
+{{selector:.tags|list|join:, }}
+```
+
+Context Broには[Obsidian Web Clipper](https://github.com/obsidianmd/obsidian-clipper)から継承した50以上のフィルターが含まれています。
+
+## プリセットテンプレート
+
+Context Broにはワンクリックで追加できる7つのプリセットテンプレートが付属：
+
+| プリセット | トリガーパターン | 用途 |
+|-----------|----------------|------|
+| **General Page** | — | 任意のページのデフォルト |
+| **GitHub PR / Issue** | `github.com/*/pull/*` 等 | GitHub PRとIssue |
+| **Stack Overflow Q&A** | `stackoverflow.com/questions/*` | 質問と採用された回答 |
+| **News Article** | `*.reuters.com/*` 等 | ニュースサイト |
+| **Reddit Post** | `*.reddit.com/r/*/comments/*` | Redditディスカッション |
+| **YouTube Video** | `youtube.com/watch*` 等 | YouTube動画 |
+| **Selection Only** | — | 選択テキスト + ソースのみ |
+
+プリセットを追加：**設定 → Templates → "From preset..."** ドロップダウン。
+
+## トリガーパターン
+
+テンプレートにURLトリガーパターンを設定できます。ページを共有する際、Context BroはトリガーパターンがURLに一致するテンプレートを自動選択します。
+
+パターンはワイルドカードをサポート：
+
+```
+github.com/*/pull/*     → すべてのGitHub PRに一致
+*.reddit.com/*          → すべてのRedditページに一致
+stackoverflow.com/*     → Stack Overflowに一致
+```
+
+## 例：カスタムテンプレート
+
+```json
+{
+  "type": "research",
+  "title": "{{title}}",
+  "url": "{{url}}",
+  "summary": "{{description}}",
+  "content": "{{content|truncate:5000}}",
+  "tags": "{{selector:meta[name='keywords']@content|split:,}}",
+  "capturedAt": "{{date}}T{{time}}:00Z"
+}
+```
