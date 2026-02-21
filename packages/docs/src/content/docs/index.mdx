@@ -1,16 +1,16 @@
 ---
 title: What is Context Bro?
-description: Web Clipper for AI Agents — share browsing context with your AI companion via custom API endpoints.
+description: Help you bring your context to live — a browser extension that exposes your browsing behavior as structured context via API.
 template: splash
 hero:
-  tagline: Your AI's eyes on the web.
+  tagline: Help you bring your context to live.
   actions:
     - text: Quick Start
       link: /getting-started/
       icon: right-arrow
       variant: primary
-    - text: Core Concepts
-      link: /concepts/context-bro-vs-kite-u/
+    - text: Architecture
+      link: /concepts/architecture/
       variant: minimal
 ---
 
@@ -18,9 +18,9 @@ import { Card, CardGrid } from '@astrojs/starlight/components'
 
 ## What does Context Bro do?
 
-Context Bro is a browser extension that **clips web pages and sends browsing context to any API endpoint** — designed for AI agent workflows.
+Context Bro is a browser extension that **exposes your everyday browsing behavior as structured context** — delivered to any API endpoint via a simple POST.
 
-Unlike traditional web clippers that save to a note app, Context Bro sends structured data to **your own API**, giving AI agents real-time access to what you're browsing.
+Your browsing is a rich source of context. Context Bro makes it accessible to AI agents, automation pipelines, or any system that can receive HTTP requests.
 
 <CardGrid>
   <Card title="Template-Driven" icon="document">
@@ -30,7 +30,7 @@ Unlike traditional web clippers that save to a note app, Context Bro sends struc
     Configure named API targets with custom headers — work, personal, research.
   </Card>
   <Card title="Privacy First" icon="approve-check">
-    Allowlist-first model. Default: share nothing. No analytics, no tracking.
+    Allowlist-first model. Default: share nothing. No analytics, no tracking, no servers.
   </Card>
   <Card title="Live Stream" icon="star">
     Capture Twitch and YouTube live chat messages, donations, and subscriptions.

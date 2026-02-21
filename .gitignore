@@ -5,6 +5,9 @@ node_modules/
 .output/
 .wxt/
 
+# Astro output
+.astro/
+
 # Build
 dist/
 

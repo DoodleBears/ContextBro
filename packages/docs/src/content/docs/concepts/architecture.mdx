@@ -1,0 +1,70 @@
+---
+title: Architecture
+description: How Context Bro works — from page extraction to API delivery.
+---
+
+## Overview
+
+Context Bro is a standalone browser extension that turns your everyday browsing into structured context for AI agents. It extracts page content, compiles it through customizable templates, and delivers it to any API endpoint you configure.
+
+**Slogan: Help you bring your context to live.**
+
+## Data Flow
+
+```
+Browser Tab → Content Script → Template Engine → POST to Your API
+```
+
+1. **Content Script** extracts page data (title, content, meta, selection, schema.org)
+2. **Template Engine** compiles your template with extracted variables and filters
+3. **API Client** POSTs the compiled payload to your configured endpoint with custom headers
+
+## Extension Components
+
+| Component | Role |
+|-----------|------|
+| **Background Service Worker** | Orchestrates extraction, message routing, scheduling, adapter management |
+| **Content Script** | Injected into pages to extract DOM content via Defuddle |
+| **Popup** | Quick share UI — endpoint/template selection, JSON preview |
+| **Options Page** | Full configuration — endpoints, templates, allowlist, schedule |
+| **Selection Button** | Floating CSUI button on text selection |
+| **Platform Adapters** | Twitch and YouTube live chat observers |
+
+## Template Engine
+
+The template engine is AST-based (extracted from Obsidian Web Clipper, MIT License):
+
+- **Tokenizer** → **Parser** → **Renderer** pipeline
+- 50+ built-in filters (truncate, replace, date, split, join, etc.)
+- CSS selector variables (`{{selector:.class@attr}}`)
+- Schema.org structured data extraction
+
+## Scheduled Extraction
+
+The scheduler uses the Chrome Alarms API to periodically extract allowlisted domains:
+
+- Allowlist-first: only configured domains are auto-extracted
+- SHA-256 content hashing for deduplication
+- Configurable intervals (5min to 2hr)
+- Focused tab or all-allowed-tabs modes
+
+## Platform Adapters
+
+Live stream adapters use MutationObserver to capture chat in real-time:
+
+- **Twitch**: native + 7TV + FFZ DOM variants, bits, subs, raids
+- **YouTube**: live chat, Super Chat/Sticker, memberships, VOD transcript
+- 30-second batch aggregation with priority sampling (monetization > mod > random)
+- Sliding window dedup (10s) to prevent duplicates
+
+## Technology Stack
+
+| Layer | Technology |
+|-------|------------|
+| Extension framework | WXT (Vite-based) |
+| UI | React 19 + TailwindCSS v4 |
+| Content extraction | Defuddle |
+| Template engine | AST-based (from Obsidian Web Clipper) |
+| Formatting | Biome |
+| Language | TypeScript (strict) |
+| Target | Chrome MV3 |

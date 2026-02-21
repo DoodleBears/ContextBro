@@ -1,0 +1,70 @@
+---
+title: アーキテクチャ
+description: Context Broの仕組み — ページ抽出からAPI配信まで。
+---
+
+## 概要
+
+Context Broはスタンドアロンのブラウザ拡張機能で、日常のブラウジング行動をAI Agentが利用できる構造化コンテキストに変換します。ページコンテンツを抽出し、カスタマイズ可能なテンプレートでコンパイルし、設定した任意のAPIエンドポイントに配信します。
+
+**Slogan: Help you bring your context to live.**
+
+## データフロー
+
+```
+ブラウザタブ → Content Script → テンプレートエンジン → あなたのAPIにPOST
+```
+
+1. **Content Script** がページデータを抽出（タイトル、コンテンツ、meta、選択テキスト、schema.org）
+2. **テンプレートエンジン** が抽出した変数とフィルターでテンプレートをコンパイル
+3. **APIクライアント** がコンパイルされたペイロードをカスタムヘッダー付きで設定されたエンドポイントにPOST
+
+## 拡張機能コンポーネント
+
+| コンポーネント | 役割 |
+|---------------|------|
+| **Background Service Worker** | 抽出のオーケストレーション、メッセージルーティング、スケジューリング、アダプター管理 |
+| **Content Script** | ページに注入、Defuddleを通じてDOMコンテンツを抽出 |
+| **Popup** | クイック共有UI — エンドポイント/テンプレート選択、JSONプレビュー |
+| **Optionsページ** | フル設定 — エンドポイント、テンプレート、Allowlist、スケジュール |
+| **Selection Button** | テキスト選択時のフローティングCSUIボタン |
+| **プラットフォームアダプター** | TwitchとYouTubeライブチャットオブザーバー |
+
+## テンプレートエンジン
+
+テンプレートエンジンはAST ベース（Obsidian Web Clipperから抽出、MITライセンス）：
+
+- **Tokenizer** → **Parser** → **Renderer** パイプライン
+- 50以上の組み込みフィルター（truncate、replace、date、split、join等）
+- CSSセレクター変数（`{{selector:.class@attr}}`）
+- Schema.org構造化データ抽出
+
+## 定期抽出
+
+スケジューラーはChrome Alarms APIを使用してAllowlistドメインを定期的に抽出：
+
+- Allowlistファースト：設定されたドメインのみ自動抽出
+- SHA-256コンテンツハッシュで重複排除
+- 設定可能な間隔（5分〜2時間）
+- フォーカスタブまたは全許可タブモード
+
+## プラットフォームアダプター
+
+ライブ配信アダプターはMutationObserverを使用してリアルタイムでチャットをキャプチャ：
+
+- **Twitch**: ネイティブ + 7TV + FFZ DOM バリアント、bits、サブスク、raid
+- **YouTube**: ライブチャット、スーパーチャット/ステッカー、メンバーシップ、VODトランスクリプト
+- 30秒バッチ集約、優先度サンプリング（課金 > モデレーター > ランダム）
+- スライディングウィンドウ重複排除（10秒）
+
+## 技術スタック
+
+| レイヤー | 技術 |
+|---------|------|
+| 拡張機能フレームワーク | WXT（Viteベース） |
+| UI | React 19 + TailwindCSS v4 |
+| コンテンツ抽出 | Defuddle |
+| テンプレートエンジン | ASTベース（Obsidian Web Clipperから） |
+| フォーマッター | Biome |
+| 言語 | TypeScript（strictモード） |
+| ターゲット | Chrome MV3 |

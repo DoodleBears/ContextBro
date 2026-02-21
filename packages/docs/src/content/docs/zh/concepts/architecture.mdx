@@ -1,0 +1,70 @@
+---
+title: 架构概览
+description: Context Bro 的工作原理 —— 从页面提取到 API 投递。
+---
+
+## 概览
+
+Context Bro 是一个独立的浏览器扩展，将你日常的浏览行为转化为 AI Agent 可用的结构化上下文。它提取页面内容，通过可自定义的模板编译，并投递到你配置的任意 API 端点。
+
+**Slogan: Help you bring your context to live.**
+
+## 数据流
+
+```
+浏览器标签页 → Content Script → 模板引擎 → POST 到你的 API
+```
+
+1. **Content Script** 提取页面数据（标题、内容、meta、选区、schema.org）
+2. **模板引擎** 使用提取的变量和过滤器编译模板
+3. **API 客户端** 将编译后的 payload 通过自定义 Headers POST 到配置的端点
+
+## 扩展组件
+
+| 组件 | 职责 |
+|------|------|
+| **Background Service Worker** | 编排提取、消息路由、调度、适配器管理 |
+| **Content Script** | 注入页面，通过 Defuddle 提取 DOM 内容 |
+| **Popup** | 快速分享 UI —— 端点/模板选择、JSON 预览 |
+| **Options 页面** | 完整配置 —— 端点、模板、允许列表、定时器 |
+| **Selection Button** | 文本选区时的浮动 CSUI 按钮 |
+| **平台适配器** | Twitch 和 YouTube 直播聊天观察器 |
+
+## 模板引擎
+
+模板引擎基于 AST（提取自 Obsidian Web Clipper，MIT 许可证）：
+
+- **Tokenizer** → **Parser** → **Renderer** 管线
+- 50+ 内置过滤器（truncate、replace、date、split、join 等）
+- CSS 选择器变量（`{{selector:.class@attr}}`）
+- Schema.org 结构化数据提取
+
+## 定时提取
+
+调度器使用 Chrome Alarms API 定期提取允许列表域名：
+
+- 允许列表优先：仅配置的域名被自动提取
+- SHA-256 内容哈希去重
+- 可配置间隔（5分钟到2小时）
+- 当前标签页或所有允许标签页模式
+
+## 平台适配器
+
+直播适配器使用 MutationObserver 实时捕获聊天：
+
+- **Twitch**：原生 + 7TV + FFZ DOM 变体，bits、订阅、raid
+- **YouTube**：直播聊天、Super Chat/Sticker、会员、VOD 字幕
+- 30 秒批量聚合，优先级采样（付费 > 管理员 > 随机）
+- 滑动窗口去重（10秒）防止重复
+
+## 技术栈
+
+| 层 | 技术 |
+|---|------|
+| 扩展框架 | WXT（基于 Vite） |
+| UI | React 19 + TailwindCSS v4 |
+| 内容提取 | Defuddle |
+| 模板引擎 | 基于 AST（来自 Obsidian Web Clipper） |
+| 格式化 | Biome |
+| 语言 | TypeScript（strict 模式） |
+| 目标 | Chrome MV3 |

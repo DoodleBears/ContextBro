@@ -3,7 +3,7 @@ import starlight from '@astrojs/starlight'
 import starlightThemeObsidian from 'starlight-theme-obsidian'
 
 export default defineConfig({
-	site: 'https://context.kite-u.com',
+	site: 'https://contextbro.com',
 	vite: {
 		css: {
 			devSourcemap: false,
@@ -57,12 +57,12 @@ export default defineConfig({
 					translations: { 'zh-CN': '核心概念', ja: 'コンセプト' },
 					items: [
 						{
-							label: 'Context Bro vs Kite-U Extension',
+							label: 'Architecture',
 							translations: {
-								'zh-CN': 'Context Bro 与 Kite-U Extension 的区别',
-								ja: 'Context Bro と Kite-U Extension の違い',
+								'zh-CN': '架构概览',
+								ja: 'アーキテクチャ',
 							},
-							slug: 'concepts/context-bro-vs-kite-u',
+							slug: 'concepts/architecture',
 						},
 						{
 							label: 'Privacy & Allowlist',
