@@ -1,0 +1,53 @@
+---
+title: Privacy & Allowlist
+description: Context Bro's allowlist-first privacy model — default share nothing, explicit opt-in for every domain.
+---
+
+## Allowlist-First Model
+
+Context Bro follows a **share-nothing-by-default** privacy model:
+
+- **Manual sharing** works on any page (you explicitly trigger it)
+- **Scheduled auto-sharing** only works on domains you've added to the Allowlist
+- **No data is ever sent** unless you've configured an endpoint and triggered a share
+
+## What Data Is Extracted
+
+When you share a page, Context Bro extracts:
+
+- Page title, URL, meta description, author
+- Main content (via [Defuddle](https://github.com/nicksawhney/defuddle) — same as Obsidian Web Clipper)
+- Selected text (if any)
+- Schema.org structured data
+- CSS selector queries (if your template uses `{{selector:...}}`)
+
+## What Is NOT Collected
+
+- No analytics or telemetry
+- No browsing history
+- No passwords or form field contents
+- No data from incognito tabs
+- No server-side storage — **we have no servers**
+
+## Where Data Goes
+
+Data is sent exclusively to **API endpoints you configure yourself**. Context Bro makes no network requests to any other destination.
+
+All settings (endpoints, templates, allowlist) are stored locally in your browser via `chrome.storage.local`. Uninstalling the extension removes all data.
+
+## Content Deduplication
+
+When using scheduled sharing, Context Bro computes a SHA-256 hash of the extracted content. If the content hasn't changed since the last share, it skips the page — avoiding duplicate payloads.
+
+Hashes are stored locally and can be cleared from Settings at any time.
+
+## Permissions Explained
+
+| Permission | Why It's Needed |
+|------------|----------------|
+| `activeTab` | Read the current tab's content when you click Share |
+| `scripting` | Inject the content extraction script into the page |
+| `storage` | Save your settings locally |
+| `alarms` | Power the scheduled sharing timer |
+| `tabs` | Query open tabs for scheduled extraction |
+| `contextMenus` | Add "Share to Context Bro" to the right-click menu |

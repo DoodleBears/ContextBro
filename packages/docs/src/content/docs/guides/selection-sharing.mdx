@@ -1,0 +1,49 @@
+---
+title: Selection Sharing
+description: Share selected text from any page via the floating button, keyboard shortcut, or context menu.
+---
+
+## Ways to Share a Selection
+
+When you select text on any web page, you have three ways to share just that selection:
+
+### Floating Button
+
+A small button appears near your selection. Click it to instantly share the selected text to your default endpoint.
+
+The button auto-hides when you clear the selection.
+
+### Keyboard Shortcut
+
+Press `Ctrl+Shift+K` (or `Cmd+Shift+K` on Mac) to share the current selection.
+
+You can customize this shortcut in your browser's extension settings (`chrome://extensions/shortcuts`).
+
+### Context Menu
+
+Right-click selected text → **Share selection to Context Bro**.
+
+## What Gets Shared
+
+When sharing a selection, the `{{selection}}` and `{{selectionHtml}}` template variables are populated with the selected text. The `{{content}}` variable still contains the full page content.
+
+If you want a template that only sends the selection, use the **Selection Only** preset:
+
+```json
+{
+  "selection": "{{selection}}",
+  "sourceUrl": "{{url}}",
+  "sourceTitle": "{{title}}",
+  "clippedAt": "{{date}} {{time}}"
+}
+```
+
+## Full Page vs Selection
+
+| Variable | With selection | Without selection |
+|----------|---------------|-------------------|
+| `{{content}}` | Full page content | Full page content |
+| `{{selection}}` | Selected text (Markdown) | Empty string |
+| `{{selectionHtml}}` | Selected text (HTML) | Empty string |
+
+Both `{{content}}` and `{{selection}}` are always available — your template decides which to include.

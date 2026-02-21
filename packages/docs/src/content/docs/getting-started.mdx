@@ -1,0 +1,69 @@
+---
+title: Quick Start
+description: Install Context Bro, configure an endpoint, and share your first page in under 2 minutes.
+---
+
+## Installation
+
+### From Chrome Web Store
+
+1. Visit the [Context Bro page on Chrome Web Store](#) (coming soon)
+2. Click **Add to Chrome**
+3. Pin the extension to your toolbar for quick access
+
+### From Source (Developer)
+
+```bash
+git clone https://github.com/DoodleBears/ContextBro.git
+cd ContextBro
+pnpm install
+pnpm run build
+```
+
+Then load the unpacked extension from `.output/chrome-mv3/` in `chrome://extensions`.
+
+## Configure Your First Endpoint
+
+1. Click the Context Bro icon → **Settings** (gear icon)
+2. Go to the **Endpoints** tab
+3. Click **+ Add endpoint**
+4. Enter a name (e.g. "My API"), the POST URL, and any headers
+5. Toggle it **enabled**
+6. Click **Save**
+
+For testing, you can use `https://httpbin.org/post` — it echoes back whatever you send.
+
+## Share a Page
+
+With an endpoint configured, you have several ways to share:
+
+| Method | How |
+|--------|-----|
+| **Popup** | Click the extension icon → **Share** |
+| **Context menu** | Right-click → **Share page to Context Bro** |
+| **Keyboard shortcut** | `Ctrl+Shift+K` (or `Cmd+Shift+K` on Mac) |
+| **Selection button** | Select text on any page → click the floating button |
+
+## What Gets Sent
+
+By default, Context Bro extracts the page and compiles a JSON payload like:
+
+```json
+{
+  "title": "How to fix CORS in Vite",
+  "url": "https://stackoverflow.com/q/12345",
+  "content": "The full article text in markdown...",
+  "author": "johndoe",
+  "domain": "stackoverflow.com",
+  "wordCount": 1234,
+  "clippedAt": "2026-02-22 14:30"
+}
+```
+
+You can fully customize this shape using [Templates](/guides/templates/).
+
+## Next Steps
+
+- [Configure custom templates](/guides/templates/) to control the payload shape
+- [Set up the Allowlist](/guides/allowlist-schedule/) for scheduled auto-sharing
+- [Learn about live stream adapters](/guides/live-stream/) for Twitch and YouTube

@@ -1,0 +1,46 @@
+---
+title: What is Context Bro?
+description: Web Clipper for AI Agents — share browsing context with your AI companion via custom API endpoints.
+template: splash
+hero:
+  tagline: Your AI's eyes on the web.
+  actions:
+    - text: Quick Start
+      link: /getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: Core Concepts
+      link: /concepts/context-bro-vs-kite-u/
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components'
+
+## What does Context Bro do?
+
+Context Bro is a browser extension that **clips web pages and sends browsing context to any API endpoint** — designed for AI agent workflows.
+
+Unlike traditional web clippers that save to a note app, Context Bro sends structured data to **your own API**, giving AI agents real-time access to what you're browsing.
+
+<CardGrid>
+  <Card title="Template-Driven" icon="document">
+    Full control over the JSON payload shape using `{{variables}}` and 50+ filters.
+  </Card>
+  <Card title="Multiple Endpoints" icon="rocket">
+    Configure named API targets with custom headers — work, personal, research.
+  </Card>
+  <Card title="Privacy First" icon="approve-check">
+    Allowlist-first model. Default: share nothing. No analytics, no tracking.
+  </Card>
+  <Card title="Live Stream" icon="star">
+    Capture Twitch and YouTube live chat messages, donations, and subscriptions.
+  </Card>
+</CardGrid>
+
+## Key Features
+
+- **One-click share** — popup, context menu, keyboard shortcut, or floating button
+- **7 preset templates** — General, GitHub PR, Stack Overflow, News, Reddit, YouTube, Selection
+- **Scheduled auto-sharing** — allowlisted domains at configurable intervals with content dedup
+- **Platform adapters** — Twitch and YouTube live chat with priority sampling
+- **Fully open source** — MIT License, no server-side components

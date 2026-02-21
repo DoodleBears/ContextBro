@@ -1,0 +1,73 @@
+---
+title: Endpoints
+description: Configure API endpoints where Context Bro sends page context — with custom headers for authentication.
+---
+
+## What Is an Endpoint?
+
+An endpoint is an **HTTP POST URL** where Context Bro sends the compiled template payload. You configure endpoints in Settings with:
+
+- **Name** — a friendly label (e.g. "Work API", "Personal KB")
+- **URL** — the POST target
+- **Headers** — custom key-value HTTP headers
+- **Enabled** — toggle on/off
+
+## Setting Up an Endpoint
+
+1. Open Context Bro **Settings** (gear icon in popup, or right-click → Options)
+2. Go to the **Endpoints** tab
+3. Click **+ Add endpoint**
+4. Fill in the details:
+
+| Field | Example |
+|-------|---------|
+| Name | `My AI Agent` |
+| URL | `https://api.example.com/context` |
+| Headers | `Authorization: Bearer sk-xxx` |
+| | `Content-Type: application/json` |
+
+5. Toggle **Enabled**
+6. Click **Save**
+
+## Custom Headers
+
+Headers are fully flexible key-value pairs. Common use cases:
+
+```
+Authorization: Bearer YOUR_TOKEN
+X-API-Key: YOUR_KEY
+Content-Type: application/json
+X-Source: context-bro
+```
+
+Each endpoint has its own headers, so you can use different auth for different targets.
+
+## Multiple Endpoints
+
+You can configure multiple endpoints. In the popup, select which endpoint to send to using the **Endpoint** dropdown.
+
+For quick sharing (keyboard shortcut, context menu, floating button), Context Bro uses the **first enabled endpoint**.
+
+## Testing
+
+Use `https://httpbin.org/post` as a test endpoint — it echoes back the full request including headers and body. Verify in your browser's Network tab that the payload matches your template.
+
+## What Gets Sent
+
+The compiled template output is sent as the **raw POST body** (not form-encoded). The `Content-Type` header from your endpoint config controls how the server interprets it.
+
+A typical request looks like:
+
+```http
+POST /context HTTP/1.1
+Host: api.example.com
+Authorization: Bearer sk-xxx
+Content-Type: application/json
+
+{
+  "title": "How to fix CORS in Vite",
+  "url": "https://stackoverflow.com/q/12345",
+  "content": "The full article text...",
+  "clippedAt": "2026-02-22 14:30"
+}
+```

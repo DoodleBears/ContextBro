@@ -1,0 +1,97 @@
+---
+title: Templates
+description: Control the exact JSON shape sent to your API using templates with variables and filters.
+---
+
+## How Templates Work
+
+A template defines the **POST body** sent to your API endpoint. You write the JSON structure using `{{variables}}` that get replaced with extracted page data at share time.
+
+## Built-in Variables
+
+| Variable | Description |
+|----------|-------------|
+| `{{title}}` | Page title |
+| `{{url}}` | Full page URL |
+| `{{content}}` | Main content in Markdown |
+| `{{author}}` | Page author (from meta tags) |
+| `{{published}}` | Published date |
+| `{{domain}}` | Domain name (e.g. `github.com`) |
+| `{{description}}` | Meta description |
+| `{{wordCount}}` | Word count of main content |
+| `{{date}}` | Current date (YYYY-MM-DD) |
+| `{{time}}` | Current time (HH:mm) |
+| `{{selection}}` | Selected text in Markdown |
+| `{{selectionHtml}}` | Selected text as raw HTML |
+| `{{image}}` | Primary image URL |
+| `{{favicon}}` | Site favicon URL |
+| `{{site}}` | Site name |
+| `{{fullHtml}}` | Complete page HTML |
+| `{{contentHtml}}` | Main content as HTML |
+
+## CSS Selector Variables
+
+You can extract specific elements from the page:
+
+```
+{{selector:h1.title}}              → text content
+{{selector:.author@href}}          → attribute value
+{{selector:.tag|list}}             → all matches as array
+{{selector:#content|markdown}}     → converted to Markdown
+```
+
+## Filters
+
+Chain filters with `|` to transform values:
+
+```
+{{title|truncate:100}}
+{{content|replace:foo:bar}}
+{{url|split:/|last}}
+{{published|date:YYYY-MM-DD}}
+{{selector:.tags|list|join:, }}
+```
+
+Context Bro includes 50+ filters inherited from [Obsidian Web Clipper](https://github.com/obsidianmd/obsidian-clipper).
+
+## Preset Templates
+
+Context Bro ships with 7 preset templates you can add with one click:
+
+| Preset | Trigger Patterns | Use Case |
+|--------|-----------------|----------|
+| **General Page** | — | Default for any page |
+| **GitHub PR / Issue** | `github.com/*/pull/*`, `github.com/*/issues/*` | GitHub PRs and issues |
+| **Stack Overflow Q&A** | `stackoverflow.com/questions/*` | Questions with accepted answers |
+| **News Article** | `*.reuters.com/*`, `*.bbc.com/*`, etc. | News sites |
+| **Reddit Post** | `*.reddit.com/r/*/comments/*` | Reddit discussions |
+| **YouTube Video** | `youtube.com/watch*`, `youtube.com/live*` | YouTube videos |
+| **Selection Only** | — | Just the selected text + source |
+
+To add a preset: **Settings → Templates → "From preset..."** dropdown.
+
+## Trigger Patterns
+
+Templates can have URL trigger patterns. When you share a page, Context Bro auto-selects the template whose trigger matches the current URL.
+
+Patterns support wildcards:
+
+```
+github.com/*/pull/*     → matches any GitHub PR
+*.reddit.com/*          → matches any Reddit page
+stackoverflow.com/*     → matches Stack Overflow
+```
+
+## Example: Custom Template
+
+```json
+{
+  "type": "research",
+  "title": "{{title}}",
+  "url": "{{url}}",
+  "summary": "{{description}}",
+  "content": "{{content|truncate:5000}}",
+  "tags": "{{selector:meta[name='keywords']@content|split:,}}",
+  "capturedAt": "{{date}}T{{time}}:00Z"
+}
+```

@@ -1,0 +1,68 @@
+---
+title: Allowlist & Scheduled Sharing
+description: Configure which domains are auto-shared and set up periodic extraction intervals.
+---
+
+## Allowlist
+
+The Allowlist controls which domains are eligible for **scheduled auto-sharing**. Only pages on allowlisted domains will be extracted on a timer.
+
+Manual sharing (popup, shortcut, context menu) works on **any domain** regardless of the Allowlist.
+
+### Adding Domains
+
+1. Go to **Settings → Allowlist**
+2. Type a domain pattern and press Enter
+3. Toggle domains on/off individually
+
+### Domain Patterns
+
+| Pattern | Matches |
+|---------|---------|
+| `github.com` | Exact domain |
+| `*.github.com` | All subdomains (gist.github.com, docs.github.com, etc.) |
+| `news.ycombinator.com` | Exact subdomain |
+
+### Presets
+
+Click a preset button to add a curated group of domains:
+
+| Preset | Domains |
+|--------|---------|
+| **Dev** | github.com, stackoverflow.com, developer.mozilla.org, etc. |
+| **News** | reuters.com, bbc.com, cnn.com, nytimes.com, etc. |
+| **Social** | reddit.com, twitter.com, mastodon.social, etc. |
+| **Streaming** | twitch.tv, youtube.com |
+
+### Per-Domain Template
+
+Each allowlisted domain can optionally bind to a specific template. When the scheduler extracts that domain, it uses the bound template instead of the default.
+
+## Scheduled Sharing
+
+When enabled, Context Bro periodically extracts pages from allowlisted domains and sends them to your default endpoint.
+
+### Configuration
+
+Go to **Settings → Schedule**:
+
+| Setting | Options |
+|---------|---------|
+| **Enable** | Toggle auto-sharing on/off |
+| **Interval** | 5min, 10min, 15min, 30min, 1hr, 2hr |
+| **Mode** | Focused tab only / All allowed tabs |
+
+### How It Works
+
+1. The Chrome Alarms API fires at your configured interval
+2. Context Bro queries your open tabs
+3. Tabs matching allowlisted domains are selected
+4. For each selected tab:
+   - Content is extracted
+   - A SHA-256 hash is computed
+   - If the content hasn't changed since last share → skip (dedup)
+   - Otherwise → compile template → POST to default endpoint
+
+### Deduplication
+
+Content hashes are stored locally in `chrome.storage.local`. This prevents sending the same unchanged page repeatedly. Hashes are cleared when you clear extension data or uninstall.

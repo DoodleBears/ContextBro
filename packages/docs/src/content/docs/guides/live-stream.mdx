@@ -1,0 +1,95 @@
+---
+title: Twitch & YouTube Live
+description: Capture live stream chat messages, donations, and subscriptions for AI processing.
+---
+
+## Overview
+
+Context Bro includes platform adapters for **Twitch** and **YouTube Live** that observe chat messages in real-time and send batches to your configured endpoint.
+
+When an adapter is active, the extension badge shows 📡.
+
+## How It Works
+
+1. Navigate to a Twitch channel or YouTube live/VOD page
+2. The adapter auto-activates and begins observing the chat DOM
+3. Chat messages are collected in a sliding window
+4. Every **30 seconds**, a batch is compiled and sent to your default endpoint
+5. When you leave the page, the adapter cleans up
+
+## Chat Batch Payload
+
+Each batch includes normalized chat messages:
+
+```json
+{
+  "event_type": "live_stream",
+  "platform": "twitch",
+  "channel": "streamer_name",
+  "title": "Stream Title",
+  "category": "Just Chatting",
+  "viewers": 12345,
+  "isLive": true,
+  "totalMessages": 250,
+  "sampledMessages": 100,
+  "messages": [
+    {
+      "user": "viewer123",
+      "message": "Hello!",
+      "roles": ["subscriber"],
+      "event": "chat"
+    }
+  ],
+  "donations": 3,
+  "memberships": 1,
+  "timestamp": "2026-02-22T14:30:00Z"
+}
+```
+
+## Priority Sampling
+
+When chat is busy (>100 messages per batch), Context Bro uses priority sampling:
+
+1. **Monetization messages** (donations, bits, super chats) — always included
+2. **Moderator & broadcaster messages** — always included
+3. **Regular messages** — randomly sampled to fit the 100-message cap
+
+This ensures important events are never lost.
+
+## Twitch Adapter
+
+Supports:
+- Native Twitch chat, 7TV, and FrankerFaceZ (FFZ) DOM variants
+- Chat messages, subscriptions, gift subs, raids, bits
+- Moderator/VIP/broadcaster role detection
+- Deleted message detection
+
+## YouTube Adapter
+
+Supports:
+- Live chat messages (text, paid, sticker, membership, gift)
+- Super Chat and Super Sticker amounts (multi-currency)
+- New member, resub, and gift events
+- VOD transcript tracking (5-second polling interval)
+
+### YouTube Transcript
+
+For VOD pages, the YouTube adapter also tracks captions/transcript:
+
+```json
+{
+  "event_type": "transcript",
+  "platform": "youtube",
+  "videoId": "dQw4w9WgXcQ",
+  "title": "Video Title",
+  "channel": "Channel Name",
+  "text": "The transcript text...",
+  "currentTime": 125.5,
+  "duration": 3600,
+  "timestamp": "2026-02-22T14:30:00Z"
+}
+```
+
+## Deduplication
+
+A sliding window dedup (10-second window) prevents duplicate messages from being counted when the DOM updates rapidly. Messages are keyed by `platform-username-messagePrefix`.

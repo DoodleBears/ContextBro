@@ -1,0 +1,38 @@
+---
+title: Context Bro vs Kite-U Extension
+description: Understanding the difference between Context Bro (user-controlled web clipper) and Kite-U Extension (agent-controlled browser automation).
+---
+
+## Two Extensions, Two Trust Models
+
+Kite-U has two browser extensions that serve different purposes:
+
+| | Context Bro | Kite-U Extension |
+|---|---|---|
+| **Control model** | User-controlled | Agent-controlled |
+| **Analogy** | Web clipper (you decide what to share) | Browser automation (the AI drives) |
+| **Trust level** | User trust — you trigger every action | Agent trust — AI can act on its own |
+| **Data flow** | Your browser → your API endpoint | Kite-U platform ↔ your browser |
+| **Permissions** | Read-only (extract page content) | Read + write (click, navigate, fill forms) |
+
+## When to Use Context Bro
+
+- You want to **feed web context to your AI assistant** on demand
+- You want full control over **what gets shared and when**
+- You're building custom AI pipelines that need web data as input
+- You want to capture **live stream chat** for AI processing
+
+## When to Use Kite-U Extension
+
+- You want the AI to **browse the web for you**
+- You need the AI to **fill forms, click buttons, or navigate**
+- You want autonomous agent workflows that interact with web apps
+
+## Can I Use Both?
+
+Yes! They complement each other:
+
+- **Context Bro** gives your AI **eyes** (read what you're looking at)
+- **Kite-U Extension** gives your AI **hands** (interact with web pages)
+
+They are separate extensions with separate permissions, separate repos, and separate installs.
