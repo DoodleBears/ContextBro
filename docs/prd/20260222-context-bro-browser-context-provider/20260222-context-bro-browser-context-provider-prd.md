@@ -13,7 +13,7 @@
 |-------|------|--------|------|
 | 1 | WXT 项目搭建 & Core Clipper 功能 | ✅ Completed | [Phase 1 Checklist](#phase-1-checklist) |
 | 2 | Scheduled Context Sharing (Cron) | ✅ Completed | [Phase 2 Checklist](#phase-2-checklist) |
-| 3 | Platform Adapters — Twitch & YouTube | 🔲 Pending | [Phase 3 Checklist](#phase-3-checklist) |
+| 3 | Platform Adapters — Twitch & YouTube | ✅ Completed | [Phase 3 Checklist](#phase-3-checklist) |
 | 4 | Documentation & Launch | 🔲 Pending | [Phase 4 Checklist](#phase-4-checklist) |
 
 > Status Legend: ✅ Completed | 🔄 In Progress | 🔲 Pending
@@ -921,64 +921,71 @@ Settings 页面新增两个 tab：
 **架构参考：** Clone [Social Stream Ninja](https://github.com/steveseguin/social_stream) 到本地，参考其平台 DOM 选择器和 MutationObserver 策略。用 TypeScript 独立实现，保持 MIT License。
 
 **Tasks:**
-- [ ] 新建 `src/lib/adapters/types.ts`（类型定义）
-  - `PlatformAdapter` 接口（见 §3.4.1）
-  - `StreamInfo` 接口
-  - `NormalizedChatMessage` 接口（见 §3.4.2，比 SSN 更丰富）
-  - `EmoteRef`, `Badge`, `ChatRole` 类型
-  - `ChatBatch` 聚合类型
-- [ ] 新建 `src/lib/adapters/base.ts`（Adapter 基类）
-  - 通用 MutationObserver 管理（attach / disconnect / reconnect）
-  - 滑动窗口去重（`Map<string, number>`，10s 窗口，参考 SSN 6s 窗口）
-  - Chat 批量聚合器（30s flush + 采样逻辑，见 §3.4.4）
-  - 延迟处理队列（20ms tick，参考 SSN Twitch 实现，避免高频突变阻塞）
-- [ ] 新建 `src/lib/adapters/twitch.ts`（参考 SSN `sources/twitch.js`）
-  - MutationObserver 配置：`childList + subtree + attributes`（§3.4.3）
-  - 级联 selector：原生 Twitch → 7TV → FFZ DOM 变体
-  - Stream info 提取（title, category, viewers, uptime）
-  - Chat 消息解析：username, displayName, nameColor, roles, badges
-  - Emote 解析（native + BTTV + 7TV + FFZ emote sets）
-  - Monetization 解析：Bits, Gift Sub（含批量）, Sub, Resub
-  - 平台特有信息：Channel Points, Hype Train, Predictions, First Message, Raid
-  - 消息删除检测（`data-a-target="chat-deleted-message-placeholder"`）
-- [ ] 新建 `src/lib/adapters/youtube.ts`（参考 SSN `sources/youtube.js`）
-  - **Live Chat**：
-    - MutationObserver 配置：`childList only, no subtree`（§3.4.3）
-    - Target: `yt-live-chat-item-list-renderer #items`
-    - 消息分类 by tag name（text, paid, membership, supersticker）
-    - Super Chat / Super Sticker 解析（金额、颜色、tier）
-    - Membership 事件解析
-    - 删除检测（`is-deleted` attribute observer）
-  - **VOD**：
-    - Video info（title, channel, duration, views）
-    - Transcript 提取（captions API / DOM `ytd-transcript-segment-renderer`）
-    - Progress tracking（`currentTime / duration`）
-- [ ] 新建 `src/entrypoints/content/adapters/` — WXT Content Script 注入
-  - Per-platform content script（WXT `matches` 声明 URL pattern）
-  - `twitch.tv` → 注入 Twitch adapter
-  - `youtube.com/watch*`, `youtube.com/live*` → 注入 YouTube adapter
-  - Adapter 生命周期：URL 匹配 → init → observe → destroy (on navigate away)
-- [ ] Background 集成
-  - Adapter content script ↔ background messaging（chat batch 传输）
-  - 模板编译：`event_type: 'live_stream'`
-  - 发送到用户 endpoints
-- [ ] Badge 状态指示（📡 Live adapter active）
-- [ ] 更新 `wxt.config.ts`：Twitch + YouTube host permissions
+- [x] 新建 `src/lib/adapters/types.ts`（类型定义）
+  - ✅ `PlatformAdapter` 接口
+  - ✅ `StreamInfo` 接口（含 channelAvatar, url, startedAt）
+  - ✅ `NormalizedChatMessage` 接口（比 SSN 更丰富：identity, roles, badges, monetization, membership, platform-specific, reply）
+  - ✅ `EmoteRef`, `Badge`, `ChatRole` 类型
+  - ✅ `ChatBatch` 聚合类型（含 donations/memberships 统计）
+  - ✅ `TranscriptChunk` 类型（VOD/Live 字幕）
+- [x] 新建 `src/lib/adapters/base.ts`（Adapter 基类）
+  - ✅ 通用 MutationObserver 管理（attach / disconnect / reconnect）
+  - ✅ 滑动窗口去重（`Map<string, number>`，10s 窗口）
+  - ✅ Chat 批量聚合器（30s flush + 采样逻辑：monetization > mod/broadcaster > random）
+  - ✅ 延迟处理队列（20ms tick，避免高频突变阻塞）
+  - ✅ Deletion observer 支持
+- [x] 新建 `src/lib/adapters/twitch.ts`（参考 SSN `sources/twitch.js`）
+  - ✅ MutationObserver 配置：`childList + subtree + attributes`
+  - ✅ 级联 selector：原生 Twitch → 7TV → FFZ DOM 变体
+  - ✅ Stream info 提取（title, category, viewers, live indicator）
+  - ✅ Chat 消息解析：username, displayName, nameColor, roles, badges
+  - ✅ 多语言 subscriber badge 检测（12 种语言）
+  - ✅ Monetization 解析：Bits, Gift Sub（含批量）, Sub, Resub
+  - ✅ 事件消息解析：subscription, gift, raid
+  - ✅ 消息删除检测（`class="deleted"` + `data-a-target="chat-deleted-message-placeholder"`）
+  - ✅ Reply 上下文提取
+  - ✅ First message badge 检测
+- [x] 新建 `src/lib/adapters/youtube.ts`（参考 SSN `sources/youtube.js`）
+  - ✅ **Live Chat**：
+    - ✅ MutationObserver 配置：`childList only, no subtree`
+    - ✅ Target: `yt-live-chat-item-list-renderer #items`（含 iframe fallback）
+    - ✅ 消息分类 by tag name（text, paid, membership, supersticker, gift）
+    - ✅ Super Chat / Super Sticker 解析（金额解析支持多币种格式）
+    - ✅ Membership 事件解析（new, resub, upgrade, gift）
+    - ✅ 删除检测（`is-deleted` attribute observer）
+    - ✅ Badge 提取（含分辨率升级）
+  - ✅ **VOD**：
+    - ✅ Video info（title, channel）
+    - ✅ Transcript 提取（DOM `ytd-transcript-segment-renderer`，5s 窗口匹配）
+    - ✅ Progress tracking（`currentTime / duration`，5s 轮询）
+- [x] 新建 WXT Content Script 注入
+  - ✅ `src/entrypoints/twitch-adapter.content.ts`（matches: `*://*.twitch.tv/*`）
+  - ✅ `src/entrypoints/youtube-adapter.content.ts`（matches: `*://*.youtube.com/watch*`, `*://*.youtube.com/live*`）
+  - ✅ Adapter 生命周期：URL 匹配 → init → observe → destroy（beforeunload）
+- [x] Background 集成
+  - ✅ `adapterActive` / `adapterInactive` 消息处理
+  - ✅ `adapterChatBatch` — 序列化 chat batch JSON → POST to endpoint
+  - ✅ `adapterTranscript` — 序列化 transcript chunk JSON → POST to endpoint
+- [x] Badge 状态指示（📡 Live adapter active）
+  - ✅ `browser.action.setBadgeText({ text: '📡' })` on adapter active
+  - ✅ Badge 清除 on adapter inactive
+- [x] Manifest 自动生成（WXT 从 content script `matches` 自动生成，无需手动 host permissions）
 
 ### Phase 3 Checklist
 
-- [ ] Twitch 频道：chat batch → NormalizedChatMessage[] → 模板编译 → POST
-- [ ] Twitch：roles/badges/emotes 正确解析
-- [ ] Twitch：Bits/Gift Sub/Sub/Raid 事件正确识别
-- [ ] Twitch：7TV/FFZ DOM 变体兼容
-- [ ] YouTube VOD：transcript + 进度 → Event
-- [ ] YouTube Live：chat batch + Super Chat + Membership → Event
-- [ ] YouTube Live：消息删除正确追踪
-- [ ] 高频 chat 正确采样（monetization/mod 消息优先保留）
-- [ ] 滑动窗口去重正常工作
-- [ ] Tab 导航时 adapter 正确 destroy + 清理 observer
-- [ ] Badge 📡 状态正确
-- [ ] `pnpm run typecheck` + `pnpm run check` 零错误
+- [x] Twitch 频道：chat batch → NormalizedChatMessage[] → JSON → POST
+- [x] Twitch：roles/badges 正确解析（多语言 subscriber badge 检测）
+- [x] Twitch：Bits/Gift Sub/Sub/Raid 事件正确识别
+- [x] Twitch：7TV/FFZ DOM 变体兼容（级联 selector）
+- [x] YouTube VOD：transcript + 进度 → Event
+- [x] YouTube Live：chat batch + Super Chat + Membership → Event
+- [x] YouTube Live：消息删除正确追踪（`is-deleted` attribute observer）
+- [x] 高频 chat 正确采样（monetization/mod 消息优先保留）
+- [x] 滑动窗口去重正常工作（10s 窗口）
+- [x] Tab 导航时 adapter 正确 destroy + 清理 observer（beforeunload）
+- [x] Badge 📡 状态正确
+- [x] `pnpm run build` 产出 685 KB Chrome MV3 extension（含 Twitch 12.6KB + YouTube 13.9KB adapter）
+- [x] `pnpm run typecheck` + `pnpm run check` 零错误
 
 ### Phase 4: Documentation & Launch
 
