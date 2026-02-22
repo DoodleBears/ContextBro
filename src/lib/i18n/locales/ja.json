@@ -69,7 +69,7 @@
 	"popup.endpoint": "エンドポイント",
 	"popup.template": "テンプレート",
 	"popup.noEndpoints": "エンドポイント未設定",
-	"popup.matched": "マッチ: {pattern}",
+	"popup.matchedRules": "マッチしたルール",
 	"popup.sent": "送信済み ({status})",
 
 	"common.save": "保存",

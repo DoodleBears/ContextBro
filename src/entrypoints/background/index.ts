@@ -109,6 +109,11 @@ export default defineBackground(() => {
 			return true
 		}
 
+		if (message.action === 'shareAll') {
+			shareFromTab(message.tabId).then(() => sendResponse({ ok: true }), (err) => sendResponse({ ok: false, error: String(err) }))
+			return true
+		}
+
 		if (message.action === 'compilePreview') {
 			handleCompilePreview(message.tabId, message.templateId).then(sendResponse)
 			return true

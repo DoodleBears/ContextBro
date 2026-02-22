@@ -69,7 +69,7 @@
 	"popup.endpoint": "接口",
 	"popup.template": "模板",
 	"popup.noEndpoints": "未配置接口",
-	"popup.matched": "已匹配: {pattern}",
+	"popup.matchedRules": "匹配的规则",
 	"popup.sent": "已发送 ({status})",
 
 	"common.save": "保存",

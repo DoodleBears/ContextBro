@@ -60,6 +60,7 @@ export function SiteRuleEditor({
 }: Props) {
 	const { t } = useLocale()
 	const [newName, setNewName] = useState('')
+	const [patternsText, setPatternsText] = useState<Record<string, string>>({})
 
 	function addRule(name: string) {
 		const trimmed = name.trim()
@@ -154,12 +155,22 @@ export function SiteRuleEditor({
 		onRulesChange([...siteRules, newRule])
 	}
 
-	function updatePatterns(ruleId: string, text: string) {
+	function handlePatternsChange(ruleId: string, text: string) {
+		setPatternsText((prev) => ({ ...prev, [ruleId]: text }))
+	}
+
+	function handlePatternsBlur(ruleId: string) {
+		const text = patternsText[ruleId]
+		if (text === undefined) return
 		const patterns = text
 			.split('\n')
 			.map((line) => line.trim().toLowerCase())
 			.filter(Boolean)
 		updateRule(ruleId, { patterns })
+		setPatternsText((prev) => {
+			const { [ruleId]: _, ...rest } = prev
+			return rest
+		})
 	}
 
 	const enabledEndpoints = endpoints.filter((e) => e.enabled)
@@ -226,8 +237,9 @@ export function SiteRuleEditor({
 									{t('sites.patterns')}
 								</Label>
 								<Textarea
-									value={rule.patterns.join('\n')}
-									onChange={(e) => updatePatterns(rule.id, e.target.value)}
+									value={patternsText[rule.id] ?? rule.patterns.join('\n')}
+									onChange={(e) => handlePatternsChange(rule.id, e.target.value)}
+									onBlur={() => handlePatternsBlur(rule.id)}
 									className="font-mono text-xs min-h-[60px] resize-y"
 									placeholder={t('sites.patternsPlaceholder')}
 									rows={Math.max(2, rule.patterns.length + 1)}

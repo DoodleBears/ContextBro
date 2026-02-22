@@ -69,7 +69,7 @@
 	"popup.endpoint": "Endpoint",
 	"popup.template": "Template",
 	"popup.noEndpoints": "No endpoints configured",
-	"popup.matched": "Matched: {pattern}",
+	"popup.matchedRules": "Matched rules",
 	"popup.sent": "Sent ({status})",
 
 	"common.save": "Save",

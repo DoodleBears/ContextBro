@@ -1,5 +1,5 @@
 import '@/assets/tailwind.css'
-import { Settings } from 'lucide-react'
+import { Send, Settings } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { EndpointSelector } from '@/components/EndpointSelector'
 import { JsonPreview } from '@/components/JsonPreview'
@@ -32,6 +32,8 @@ export default function App() {
 	const [previewLoading, setPreviewLoading] = useState(true)
 	const [shareStatus, setShareStatus] = useState<ShareStatus>('idle')
 	const [shareMessage, setShareMessage] = useState('')
+
+	const hasMatchedRules = matchedRules.length > 0
 
 	const loadPreview = useCallback(
 		async (tabId?: number) => {
@@ -101,15 +103,6 @@ export default function App() {
 			if (matched.length > 0) {
 				const first = matched[0]
 				if (first.templateId) setSelectedTemplate(first.templateId)
-				if (first.endpointIds.length > 0) {
-					const firstEndpoint = eps.find(
-						(e) => e.enabled && first.endpointIds.includes(e.id),
-					)
-					if (firstEndpoint) setSelectedEndpoint(firstEndpoint.id)
-				} else {
-					const firstEnabled = eps.find((e) => e.enabled)
-					if (firstEnabled) setSelectedEndpoint(firstEnabled.id)
-				}
 			} else {
 				const firstEnabled = eps.find((e) => e.enabled)
 				if (firstEnabled) setSelectedEndpoint(firstEnabled.id)
@@ -133,20 +126,38 @@ export default function App() {
 		setShareStatus('loading')
 		setShareMessage('')
 
-		const result = await browser.runtime.sendMessage({
-			action: 'share',
-			tabId: tab.id,
-			endpointId: selectedEndpoint,
-			templateId: selectedTemplate,
-		})
+		if (hasMatchedRules) {
+			// Use shareAll — background handles multi-rule/multi-endpoint routing
+			const result = await browser.runtime.sendMessage({
+				action: 'shareAll',
+				tabId: tab.id,
+			})
 
-		if (result?.ok) {
-			setShareStatus('success')
-			setShareMessage(t('popup.sent', { status: String(result.status) }))
-			setTimeout(() => setShareStatus('idle'), 2000)
+			if (result?.ok) {
+				setShareStatus('success')
+				setShareMessage(t('popup.sent', { status: '200' }))
+				setTimeout(() => setShareStatus('idle'), 2000)
+			} else {
+				setShareStatus('error')
+				setShareMessage(result?.error || 'Failed')
+			}
 		} else {
-			setShareStatus('error')
-			setShareMessage(result?.error || result?.statusText || 'Failed')
+			// Manual share with selected endpoint/template
+			const result = await browser.runtime.sendMessage({
+				action: 'share',
+				tabId: tab.id,
+				endpointId: selectedEndpoint,
+				templateId: selectedTemplate,
+			})
+
+			if (result?.ok) {
+				setShareStatus('success')
+				setShareMessage(t('popup.sent', { status: String(result.status) }))
+				setTimeout(() => setShareStatus('idle'), 2000)
+			} else {
+				setShareStatus('error')
+				setShareMessage(result?.error || result?.statusText || 'Failed')
+			}
 		}
 	}
 
@@ -160,6 +171,24 @@ export default function App() {
 
 	function openOptions() {
 		browser.runtime.openOptionsPage()
+	}
+
+	function getEndpointNames(rule: SiteRule): string {
+		const names = rule.endpointIds
+			.map((id) => endpoints.find((e) => e.id === id))
+			.filter((e): e is Endpoint => e !== undefined)
+			.map((e) => e.name || t('endpoints.unnamed'))
+		if (names.length === 0) {
+			const first = endpoints.find((e) => e.enabled)
+			return first ? first.name || t('endpoints.unnamed') : t('popup.noEndpoints')
+		}
+		return names.join(', ')
+	}
+
+	function getTemplateName(rule: SiteRule): string {
+		if (!rule.templateId || rule.templateId === 'default') return t('sites.defaultTemplate')
+		const tmpl = templates.find((t) => t.id === rule.templateId)
+		return tmpl?.name || t('templates.unnamed')
 	}
 
 	return (
@@ -179,49 +208,69 @@ export default function App() {
 			</div>
 
 			<div className="space-y-3 p-4">
-				{/* Endpoint & Template selectors */}
-				<div className="grid grid-cols-2 gap-2">
-					<div>
-						<span className="mb-1 block text-xs font-medium text-muted-foreground">
-							{t('popup.endpoint')}
-						</span>
-						<EndpointSelector
-							endpoints={endpoints}
-							selectedId={selectedEndpoint}
-							onChange={setSelectedEndpoint}
-						/>
-					</div>
-					<div>
-						<span className="mb-1 block text-xs font-medium text-muted-foreground">
-							{t('popup.template')}
-						</span>
-						<TemplateSelector
-							templates={templates}
-							selectedId={selectedTemplate}
-							onChange={setSelectedTemplate}
-						/>
-					</div>
-				</div>
-
 				{/* Page Info */}
 				{pageInfo && (
 					<div className="rounded-md border bg-muted/50 p-2">
-						<div className="flex items-center gap-2">
-							<p
-								className="truncate text-sm font-medium text-foreground flex-1"
-								title={pageInfo.title}
-							>
-								{pageInfo.title || 'Untitled'}
-							</p>
-							{matchedRules.map((r) => (
-								<Badge key={r.id} variant="secondary" className="text-[10px] shrink-0">
-									{r.name}
-								</Badge>
-							))}
-						</div>
+						<p
+							className="truncate text-sm font-medium text-foreground"
+							title={pageInfo.title}
+						>
+							{pageInfo.title || 'Untitled'}
+						</p>
 						<p className="truncate text-xs text-muted-foreground" title={pageInfo.url}>
 							{pageInfo.domain}
 						</p>
+					</div>
+				)}
+
+				{/* Matched Rules Section */}
+				{hasMatchedRules ? (
+					<div className="space-y-1.5">
+						<span className="block text-xs font-medium text-muted-foreground">
+							{t('popup.matchedRules')}
+						</span>
+						<div className="space-y-1">
+							{matchedRules.map((rule) => (
+								<div
+									key={rule.id}
+									className="flex items-center gap-2 rounded border bg-muted/30 px-2.5 py-1.5 text-xs"
+								>
+									<Badge variant="secondary" className="text-[10px] shrink-0 px-1.5">
+										{rule.name}
+									</Badge>
+									<span className="text-muted-foreground">
+										<Send className="inline h-2.5 w-2.5 mr-0.5" />
+										{getEndpointNames(rule)}
+									</span>
+									<span className="text-muted-foreground ml-auto shrink-0">
+										{getTemplateName(rule)}
+									</span>
+								</div>
+							))}
+						</div>
+					</div>
+				) : (
+					<div className="grid grid-cols-2 gap-2">
+						<div>
+							<span className="mb-1 block text-xs font-medium text-muted-foreground">
+								{t('popup.endpoint')}
+							</span>
+							<EndpointSelector
+								endpoints={endpoints}
+								selectedId={selectedEndpoint}
+								onChange={setSelectedEndpoint}
+							/>
+						</div>
+						<div>
+							<span className="mb-1 block text-xs font-medium text-muted-foreground">
+								{t('popup.template')}
+							</span>
+							<TemplateSelector
+								templates={templates}
+								selectedId={selectedTemplate}
+								onChange={setSelectedTemplate}
+							/>
+						</div>
 					</div>
 				)}
 
@@ -238,7 +287,10 @@ export default function App() {
 					<Button
 						className="flex-1"
 						onClick={handleShare}
-						disabled={shareStatus === 'loading' || !selectedEndpoint || endpoints.length === 0}
+						disabled={
+							shareStatus === 'loading' ||
+							(!hasMatchedRules && (!selectedEndpoint || endpoints.length === 0))
+						}
 					>
 						{shareStatus === 'loading' ? t('popup.sending') : t('popup.share')}
 					</Button>
