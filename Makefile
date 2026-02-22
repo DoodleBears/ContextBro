@@ -1,4 +1,4 @@
-.PHONY: dev dev-docs deploy-docs zip build check typecheck help
+.PHONY: dev dev-docs deploy-docs zip zip-chrome zip-firefox build check typecheck help
 
 # ============================================================================
 # Development
@@ -17,8 +17,15 @@ dev-docs: ## Start docs dev server (Astro)
 build: ## Build extension for production
 	pnpm run build
 
-zip: ## Build & package for Chrome Web Store
+zip: ## Package for all platforms (Chrome + Firefox)
 	pnpm run zip
+	pnpm run zip:firefox
+
+zip-chrome: ## Package for Chrome only
+	pnpm run zip
+
+zip-firefox: ## Package for Firefox only
+	pnpm run zip:firefox
 
 deploy-docs: ## Build and deploy docs to Cloudflare Pages
 	pnpm --filter @context-bro/docs build
