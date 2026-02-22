@@ -1,6 +1,9 @@
 import '@/assets/tailwind.css'
+
 import { Crosshair, Globe, Keyboard, Workflow } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import logoDark from '@/assets/logo-dark.svg'
+import logoLight from '@/assets/logo-light.svg'
 import { EndpointEditor } from '@/components/EndpointEditor'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { SendHistoryPanel } from '@/components/SendHistoryPanel'
@@ -66,13 +69,20 @@ export default function App() {
 		}
 	}, [siteRules, endpoints, templates, globalSettings])
 
-	// Apply theme and watch for system changes
+	// Apply theme and watch for system changes; inform background of resolved theme
 	useEffect(() => {
+		const sendResolvedTheme = () => {
+			const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+			browser.runtime.sendMessage({ action: 'resolveSystemTheme', isDark })
+		}
+
 		applyTheme(globalSettings.theme)
+		sendResolvedTheme()
 		const cleanup = watchSystemTheme(() => {
 			if (globalSettings.theme === 'system') {
 				applyTheme('system')
 			}
+			sendResolvedTheme()
 		})
 		return cleanup
 	}, [globalSettings.theme])
@@ -86,7 +96,11 @@ export default function App() {
 		<div className="mx-auto min-h-screen max-w-4xl bg-background p-8">
 			{/* Header */}
 			<div className="mb-8 flex items-center justify-between">
-				<h1 className="text-xl font-bold text-foreground">{t('settings.title')}</h1>
+				<div className="flex items-center gap-2">
+					<img src={logoLight} alt="" className="h-7 w-7 dark:hidden" />
+					<img src={logoDark} alt="" className="hidden h-7 w-7 dark:block" />
+					<h1 className="text-xl font-bold text-foreground">{t('settings.title')}</h1>
+				</div>
 				<div className="flex items-center gap-2">
 					<ThemeSwitcher theme={globalSettings.theme} onChange={handleThemeChange} />
 					<LanguageSwitcher />
@@ -165,7 +179,6 @@ export default function App() {
 					</div>
 				</TabsContent>
 			</Tabs>
-
 		</div>
 	)
 }

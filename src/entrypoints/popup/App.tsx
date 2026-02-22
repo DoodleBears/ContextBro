@@ -1,6 +1,9 @@
 import '@/assets/tailwind.css'
+
 import { Send, Settings } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import logoDark from '@/assets/logo-dark.svg'
+import logoLight from '@/assets/logo-light.svg'
 import { EndpointSelector } from '@/components/EndpointSelector'
 import { JsonPreview } from '@/components/JsonPreview'
 import { TemplateSelector } from '@/components/TemplateSelector'
@@ -62,16 +65,23 @@ export default function App() {
 		[selectedTemplate],
 	)
 
-	// Apply theme on mount
+	// Apply theme on mount and inform background of resolved system theme
 	useEffect(() => {
 		let cleanup: (() => void) | undefined
+
+		const sendResolvedTheme = () => {
+			const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+			browser.runtime.sendMessage({ action: 'resolveSystemTheme', isDark })
+		}
 
 		browser.storage.local.get('globalSettings').then((result) => {
 			const settings = result.globalSettings as GlobalSettings | undefined
 			const theme = settings?.theme || 'system'
 			applyTheme(theme)
+			sendResolvedTheme()
 			cleanup = watchSystemTheme(() => {
 				if (theme === 'system') applyTheme('system')
+				sendResolvedTheme()
 			})
 		})
 
@@ -195,7 +205,11 @@ export default function App() {
 		<div className="w-96 bg-background">
 			{/* Header */}
 			<div className="flex items-center justify-between border-b px-4 py-3">
-				<h1 className="text-sm font-semibold text-foreground">Context Bro</h1>
+				<div className="flex items-center gap-1.5">
+					<img src={logoLight} alt="" className="h-5 w-5 dark:hidden" />
+					<img src={logoDark} alt="" className="hidden h-5 w-5 dark:block" />
+					<h1 className="text-sm font-semibold text-foreground">Context Bro</h1>
+				</div>
 				<Button
 					variant="ghost"
 					size="icon"
@@ -211,10 +225,7 @@ export default function App() {
 				{/* Page Info */}
 				{pageInfo && (
 					<div className="rounded-md border bg-muted/50 p-2">
-						<p
-							className="truncate text-sm font-medium text-foreground"
-							title={pageInfo.title}
-						>
+						<p className="truncate text-sm font-medium text-foreground" title={pageInfo.title}>
 							{pageInfo.title || 'Untitled'}
 						</p>
 						<p className="truncate text-xs text-muted-foreground" title={pageInfo.url}>

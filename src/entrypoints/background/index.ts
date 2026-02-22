@@ -29,8 +29,45 @@ const DEFAULT_TEMPLATE: ContextBroTemplate = {
 }`,
 }
 
+/**
+ * Set the toolbar icon to match the current theme (light or dark browser chrome).
+ */
+function setToolbarIcon(isDark: boolean): void {
+	const variant = isDark ? 'dark' : 'light'
+	browser.action.setIcon({
+		path: {
+			16: `icon-${variant}/16.png`,
+			32: `icon-${variant}/32.png`,
+			48: `icon-${variant}/48.png`,
+			128: `icon-${variant}/128.png`,
+		},
+	})
+}
+
+/**
+ * Read theme from storage and apply the toolbar icon.
+ * For 'system' theme, resolvedDark can be provided by a UI page.
+ */
+async function applyToolbarIcon(resolvedDark?: boolean): Promise<void> {
+	const result = await browser.storage.local.get('globalSettings')
+	const settings = result.globalSettings as GlobalSettings | undefined
+	const theme = settings?.theme || 'system'
+
+	if (theme === 'dark') {
+		setToolbarIcon(true)
+	} else if (theme === 'light') {
+		setToolbarIcon(false)
+	} else {
+		// 'system' — use resolved value if provided, otherwise default to light
+		setToolbarIcon(resolvedDark ?? false)
+	}
+}
+
 export default defineBackground(() => {
 	console.log('Context Bro background service worker started')
+
+	// Apply toolbar icon on startup
+	applyToolbarIcon()
 
 	// Run migrations before initializing scheduler
 	migrateV1ToV2()
@@ -125,8 +162,16 @@ export default defineBackground(() => {
 		}
 
 		if (message.action === 'updateGlobalSettings') {
-			updateGlobalSettings(message.globalSettings as GlobalSettings).then(sendResponse)
+			updateGlobalSettings(message.globalSettings as GlobalSettings).then((res) => {
+				applyToolbarIcon()
+				sendResponse(res)
+			})
 			return true
+		}
+
+		if (message.action === 'resolveSystemTheme') {
+			applyToolbarIcon(message.isDark as boolean)
+			return false
 		}
 
 		// ── Adapter messages ──

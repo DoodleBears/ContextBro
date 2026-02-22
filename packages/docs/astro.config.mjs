@@ -1,5 +1,5 @@
-import { defineConfig } from 'astro/config'
 import starlight from '@astrojs/starlight'
+import { defineConfig } from 'astro/config'
 import starlightThemeObsidian from 'starlight-theme-obsidian'
 
 export default defineConfig({
@@ -17,7 +17,8 @@ export default defineConfig({
 				ja: 'Context Bro ドキュメント',
 			},
 			logo: {
-				src: './src/assets/logo.svg',
+				light: './src/assets/logo-light.svg',
+				dark: './src/assets/logo-dark.svg',
 				replacesTitle: false,
 			},
 			defaultLocale: 'root',
