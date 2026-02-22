@@ -9,6 +9,7 @@ export default defineContentScript({
 	async main(ctx) {
 		let root: ReturnType<typeof createRoot> | null = null
 		let dismissTimer: ReturnType<typeof setTimeout> | null = null
+		let lastEndpointNames: string[] = []
 
 		const ui = await createShadowRootUi(ctx, {
 			name: 'context-bro-focused-indicator',
@@ -48,6 +49,7 @@ export default defineContentScript({
 				innerHtml.style.pointerEvents = 'none'
 			}
 
+			lastEndpointNames = endpointNames
 			if (root) {
 				root.render(
 					<FocusedIndicator
@@ -70,7 +72,7 @@ export default defineContentScript({
 			if (root) {
 				root.render(
 					<FocusedIndicator
-						endpointNames={[]}
+						endpointNames={lastEndpointNames}
 						phase="exit"
 						onDismissed={() => ui.remove()}
 					/>,
