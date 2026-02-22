@@ -162,7 +162,7 @@ async function extractForFocusedRules(
 					)
 				}
 
-				appendSendHistory({
+				await appendSendHistory({
 					id: crypto.randomUUID(),
 					timestamp: now,
 					url,

@@ -169,7 +169,7 @@ async function runScheduledExtraction(deps: {
 						)
 					}
 
-					appendSendHistory({
+					await appendSendHistory({
 						id: crypto.randomUUID(),
 						timestamp: now,
 						url: tab.url,

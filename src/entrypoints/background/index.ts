@@ -232,9 +232,11 @@ async function handleShare(tabId: number, endpointId?: string, templateId?: stri
 
 		if (!endpoint) return { ok: false, error: 'No endpoint configured' }
 
+		console.debug('[handleShare] compiled length:', compiled.length, 'preview:', compiled.slice(0, 200))
 		const result = await sendToEndpoint(endpoint, compiled)
+		console.debug('[handleShare] send result:', result.ok, result.status, result.statusText)
 
-		appendSendHistory({
+		await appendSendHistory({
 			id: crypto.randomUUID(),
 			timestamp: Date.now(),
 			url,
