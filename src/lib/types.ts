@@ -32,6 +32,8 @@ export interface SiteRule {
 	autoShare: boolean
 	intervalMinutes: number
 	scheduleMode: 'focused' | 'any_tab'
+	refetchEnabled: boolean
+	refetchIntervalSeconds: number
 	dedupEnabled: boolean
 	dedupWindowSeconds: number
 }

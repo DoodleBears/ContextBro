@@ -3,7 +3,7 @@ import { matchesSiteRules } from '@/lib/allowlist'
 import { sendToEndpoint } from '@/lib/api/send'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
 import { initFocusedMode } from '@/lib/focused-mode'
-import { migrateV1ToV2, migrateV2ToV3, migrateV3ToV4, migrateV4ToV5 } from '@/lib/migration'
+import { migrateV1ToV2, migrateV2ToV3, migrateV3ToV4, migrateV4ToV5, migrateV5ToV6 } from '@/lib/migration'
 import { initScheduler, updateGlobalSettings, updateSiteRules } from '@/lib/scheduler'
 import {
 	appendSendHistory,
@@ -85,6 +85,10 @@ export default defineBackground(() => {
 		})
 		.then((migrated) => {
 			if (migrated) console.debug('[background] V4→V5 migration completed')
+			return migrateV5ToV6()
+		})
+		.then((migrated) => {
+			if (migrated) console.debug('[background] V5→V6 migration completed')
 		})
 
 	// Initialize the scheduled extraction system

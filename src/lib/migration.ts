@@ -170,3 +170,26 @@ export async function migrateV4ToV5(): Promise<boolean> {
 	console.debug(`[migration] V4→V5: converted ${updatedRules.length} rules to multi-pattern`)
 	return true
 }
+
+/**
+ * Migrate from v5 to v6:
+ * - Add `refetchEnabled` + `refetchIntervalSeconds` to SiteRule
+ * Idempotent — skips if rules already have `refetchEnabled`.
+ */
+export async function migrateV5ToV6(): Promise<boolean> {
+	const result = await browser.storage.local.get(['siteRules'])
+	const siteRules = (result.siteRules as Record<string, unknown>[]) || []
+
+	if (siteRules.length === 0) return false
+	if (siteRules[0].refetchEnabled !== undefined) return false
+
+	const updatedRules = siteRules.map((r) => ({
+		...r,
+		refetchEnabled: false,
+		refetchIntervalSeconds: 60,
+	}))
+
+	await browser.storage.local.set({ siteRules: updatedRules })
+	console.debug(`[migration] V5→V6: added refetch fields to ${updatedRules.length} rules`)
+	return true
+}
