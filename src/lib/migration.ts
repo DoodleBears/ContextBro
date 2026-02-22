@@ -28,7 +28,8 @@ export async function migrateV1ToV2(): Promise<boolean> {
 		autoShare: scheduleConfig.enabled,
 		intervalMinutes: scheduleConfig.intervalMinutes,
 		scheduleMode: newMode,
-		dedupWindowMinutes: 15,
+		dedupEnabled: true,
+		dedupWindowSeconds: 900,
 	}))
 
 	const globalSettings: GlobalSettings = {
@@ -77,7 +78,8 @@ export async function migrateV2ToV3(): Promise<boolean> {
 
 /**
  * Migrate from v3 to v4:
- * - Add `dedupWindowMinutes` to SiteRule (default 15)
+ * - Add `dedupEnabled` + `dedupWindowSeconds` to SiteRule
+ * - Convert `dedupWindowMinutes` → `dedupWindowSeconds` if present
  * - Add `theme` to GlobalSettings (default 'system')
  * Idempotent — skips fields that already exist.
  */
@@ -88,12 +90,17 @@ export async function migrateV3ToV4(): Promise<boolean> {
 
 	let migrated = false
 
-	// Add dedupWindowMinutes to rules that don't have it
-	if (siteRules.length > 0 && siteRules[0].dedupWindowMinutes === undefined) {
-		const updatedRules = siteRules.map((r) => ({
-			...r,
-			dedupWindowMinutes: 15,
-		}))
+	// Add dedupEnabled + dedupWindowSeconds to rules
+	if (siteRules.length > 0 && siteRules[0].dedupEnabled === undefined) {
+		const updatedRules = siteRules.map((r) => {
+			const oldMinutes = (r.dedupWindowMinutes as number) ?? 15
+			const { dedupWindowMinutes: _, ...rest } = r as Record<string, unknown>
+			return {
+				...rest,
+				dedupEnabled: oldMinutes > 0,
+				dedupWindowSeconds: oldMinutes > 0 ? oldMinutes * 60 : 900,
+			}
+		})
 		await browser.storage.local.set({ siteRules: updatedRules })
 		migrated = true
 	}
@@ -107,7 +114,7 @@ export async function migrateV3ToV4(): Promise<boolean> {
 	}
 
 	if (migrated) {
-		console.debug('[migration] V3→V4: added dedupWindowMinutes and theme')
+		console.debug('[migration] V3→V4: added dedupEnabled/dedupWindowSeconds and theme')
 	}
 	return migrated
 }

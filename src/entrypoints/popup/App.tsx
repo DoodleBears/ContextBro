@@ -247,7 +247,7 @@ export default function App() {
 				{/* Status message */}
 				{shareMessage && (
 					<p
-						className={`text-center text-xs ${shareStatus === 'success' ? 'text-green-600' : 'text-destructive'}`}
+						className={`text-center text-xs ${shareStatus === 'success' ? 'text-success' : 'text-destructive'}`}
 					>
 						{shareMessage}
 					</p>

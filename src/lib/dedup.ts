@@ -35,16 +35,16 @@ function normalizeStore(raw: Record<string, unknown>): DedupStore {
 
 /**
  * Check if content for a URL has changed or the dedup window has expired.
- * @param dedupWindowMinutes - 0 means dedup disabled (always send).
+ * @param dedupWindowSeconds - Window in seconds. 0 or negative means dedup disabled.
  * Returns true if the content should be sent.
  */
 export async function hasContentChanged(
 	url: string,
 	content: string,
-	dedupWindowMinutes = 15,
+	dedupWindowSeconds = 900,
 ): Promise<boolean> {
 	// Dedup disabled — always send
-	if (dedupWindowMinutes <= 0) return true
+	if (dedupWindowSeconds <= 0) return true
 
 	const hash = await sha256(content)
 	const stored = await browser.storage.local.get(STORAGE_KEY)
@@ -53,7 +53,7 @@ export async function hasContentChanged(
 
 	const existing = hashes[url]
 	if (existing) {
-		const windowMs = dedupWindowMinutes * 60_000
+		const windowMs = dedupWindowSeconds * 1_000
 		const withinWindow = now - existing.sentAt < windowMs
 		if (existing.hash === hash && withinWindow) {
 			return false // same content, within window → skip

@@ -229,8 +229,8 @@ export function EndpointEditor({ endpoints, onChange }: Props) {
 				</Card>
 			))}
 
-			{/* Add endpoint — sticky above the save bar */}
-			<div className="sticky bottom-16 z-10 -mx-1 rounded-lg border bg-background/80 p-3 backdrop-blur-sm">
+			{/* Add endpoint */}
+			<div className="sticky bottom-0 z-10 -mx-1 rounded-lg border bg-background/80 p-3 backdrop-blur-sm">
 				<Button variant="outline" className="w-full border-dashed" onClick={addEndpoint}>
 					<Plus className="h-4 w-4" />
 					{t('endpoints.add')}

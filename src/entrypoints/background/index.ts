@@ -5,7 +5,11 @@ import { buildVariables, extractPageContent } from '@/lib/content-extractor'
 import { initFocusedMode } from '@/lib/focused-mode'
 import { migrateV1ToV2, migrateV2ToV3, migrateV3ToV4 } from '@/lib/migration'
 import { initScheduler, updateGlobalSettings, updateSiteRules } from '@/lib/scheduler'
-import { getEndpoints as getEndpointsFromStorage, getSiteRules } from '@/lib/storage'
+import {
+	appendSendHistory,
+	getEndpoints as getEndpointsFromStorage,
+	getSiteRules,
+} from '@/lib/storage'
 import { compileTemplate } from '@/lib/template-engine/compiler'
 import type { ContextBroTemplate, Endpoint, GlobalSettings, SiteRule } from '@/lib/types'
 
@@ -229,6 +233,18 @@ async function handleShare(tabId: number, endpointId?: string, templateId?: stri
 		if (!endpoint) return { ok: false, error: 'No endpoint configured' }
 
 		const result = await sendToEndpoint(endpoint, compiled)
+
+		appendSendHistory({
+			id: crypto.randomUUID(),
+			timestamp: Date.now(),
+			url,
+			endpointName: endpoint.name,
+			trigger: 'manual',
+			ok: result.ok,
+			status: result.status,
+			statusText: result.statusText,
+		})
+
 		return result
 	} catch (error) {
 		return { ok: false, error: String(error) }

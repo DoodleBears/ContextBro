@@ -63,8 +63,22 @@ export default defineContentScript({
 	},
 })
 
+const COLORS = {
+	light: {
+		idle: { color: '#fff', bg: '#2563eb', border: '#1d4ed8' },
+		done: { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+	},
+	dark: {
+		idle: { color: '#fff', bg: '#1d4ed8', border: '#1e40af' },
+		done: { color: '#4ade80', bg: '#052e16', border: '#166534' },
+	},
+}
+
 function SelectionButton({ getSelection }: { getSelection: () => string }) {
 	const [status, setStatus] = useState<'idle' | 'sending' | 'done'>('idle')
+	const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+	const palette = isDark ? COLORS.dark : COLORS.light
+	const c = status === 'done' ? palette.done : palette.idle
 
 	async function handleClick() {
 		const selection = getSelection()
@@ -98,13 +112,13 @@ function SelectionButton({ getSelection }: { getSelection: () => string }) {
 				fontSize: '12px',
 				fontFamily: 'system-ui, sans-serif',
 				fontWeight: 500,
-				color: status === 'done' ? '#16a34a' : '#fff',
-				backgroundColor: status === 'done' ? '#f0fdf4' : '#2563eb',
+				color: c.color,
+				backgroundColor: c.bg,
 				border: '1px solid',
-				borderColor: status === 'done' ? '#bbf7d0' : '#1d4ed8',
+				borderColor: c.border,
 				borderRadius: '6px',
 				cursor: status === 'sending' ? 'wait' : 'pointer',
-				boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+				boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.15)',
 				whiteSpace: 'nowrap',
 			}}
 		>

@@ -3,6 +3,7 @@ import { sendToEndpoint } from '@/lib/api/send'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
 import { hasContentChanged } from '@/lib/dedup'
 import {
+	appendSendHistory,
 	getLastSharedAt,
 	getSiteRules,
 	setGlobalSettings as saveGlobalSettings,
@@ -135,7 +136,11 @@ async function runScheduledExtraction(deps: {
 
 				// Dedup — skip if page content hasn't changed
 				const contentKey = response.content || response.fullHtml || ''
-				const changed = await hasContentChanged(tab.url, contentKey, rule.dedupWindowMinutes)
+				const changed = await hasContentChanged(
+					tab.url,
+					contentKey,
+					rule.dedupEnabled ? rule.dedupWindowSeconds : 0,
+				)
 				if (!changed) {
 					console.debug(`[scheduler] Skipping unchanged: ${tab.url}`)
 					continue
@@ -152,13 +157,29 @@ async function runScheduledExtraction(deps: {
 
 				for (let i = 0; i < results.length; i++) {
 					const r = results[i]
-					if (r.status === 'fulfilled' && r.value.ok) {
+					const ok = r.status === 'fulfilled' && r.value.ok
+					const status = r.status === 'fulfilled' ? r.value.status : 0
+					const statusText = r.status === 'fulfilled' ? r.value.statusText : String(r.reason)
+
+					if (ok) {
 						console.debug(`[scheduler] Sent ${tab.url} → ${targetEndpoints[i].name}`)
 					} else {
-						const reason =
-							r.status === 'rejected' ? r.reason : `${r.value.status} ${r.value.statusText}`
-						console.error(`[scheduler] Failed ${tab.url} → ${targetEndpoints[i].name}: ${reason}`)
+						console.error(
+							`[scheduler] Failed ${tab.url} → ${targetEndpoints[i].name}: ${status} ${statusText}`,
+						)
 					}
+
+					appendSendHistory({
+						id: crypto.randomUUID(),
+						timestamp: now,
+						url: tab.url,
+						endpointName: targetEndpoints[i].name,
+						rulePattern: rule.pattern,
+						trigger: 'scheduler',
+						ok,
+						status,
+						statusText,
+					})
 				}
 
 				// Mark as shared if at least one endpoint succeeded

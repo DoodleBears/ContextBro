@@ -1,4 +1,10 @@
-import type { ContextBroTemplate, Endpoint, GlobalSettings, SiteRule } from '@/lib/types'
+import type {
+	ContextBroTemplate,
+	Endpoint,
+	GlobalSettings,
+	SendHistoryEntry,
+	SiteRule,
+} from '@/lib/types'
 
 const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
 	locale: 'en',
@@ -48,4 +54,21 @@ export async function getLastSharedAt(): Promise<Record<string, number>> {
 
 export async function setLastSharedAt(map: Record<string, number>): Promise<void> {
 	await browser.storage.local.set({ lastSharedAt: map })
+}
+
+const MAX_SEND_HISTORY = 100
+
+export async function getSendHistory(): Promise<SendHistoryEntry[]> {
+	const result = await browser.storage.local.get('sendHistory')
+	return (result.sendHistory as SendHistoryEntry[]) || []
+}
+
+export async function appendSendHistory(entry: SendHistoryEntry): Promise<void> {
+	const history = await getSendHistory()
+	history.unshift(entry)
+	await browser.storage.local.set({ sendHistory: history.slice(0, MAX_SEND_HISTORY) })
+}
+
+export async function clearSendHistory(): Promise<void> {
+	await browser.storage.local.remove('sendHistory')
 }

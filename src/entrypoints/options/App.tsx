@@ -1,12 +1,12 @@
 import '@/assets/tailwind.css'
-import { Check, Crosshair, Globe, Keyboard, Workflow } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { Crosshair, Globe, Keyboard, Workflow } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { EndpointEditor } from '@/components/EndpointEditor'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { SendHistoryPanel } from '@/components/SendHistoryPanel'
 import { SiteRuleEditor } from '@/components/SiteRuleEditor'
 import { TemplateEditor } from '@/components/TemplateEditor'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
-import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useLocale } from '@/lib/i18n'
 import { applyTheme, type Theme, watchSystemTheme } from '@/lib/theme'
@@ -23,8 +23,11 @@ export default function App() {
 	const [endpoints, setEndpoints] = useState<Endpoint[]>([])
 	const [templates, setTemplates] = useState<ContextBroTemplate[]>([])
 	const [globalSettings, setGlobalSettings] = useState<GlobalSettings>(DEFAULT_GLOBAL_SETTINGS)
-	const [saved, setSaved] = useState(false)
 	const [activeTab, setActiveTab] = useState('sites')
+
+	// Auto-save: skip saving until initial load completes
+	const loaded = useRef(false)
+	const saveTimer = useRef<ReturnType<typeof setTimeout>>(null)
 
 	const loadSettings = useCallback(async () => {
 		const result = await browser.storage.local.get([
@@ -37,11 +40,31 @@ export default function App() {
 		setEndpoints((result.endpoints as Endpoint[]) || [])
 		setTemplates((result.templates as ContextBroTemplate[]) || [])
 		setGlobalSettings((result.globalSettings as GlobalSettings) || DEFAULT_GLOBAL_SETTINGS)
+		// Mark loaded after a tick so the auto-save effect doesn't fire for the initial set
+		requestAnimationFrame(() => {
+			loaded.current = true
+		})
 	}, [])
 
 	useEffect(() => {
 		loadSettings()
 	}, [loadSettings])
+
+	// Auto-save: debounce writes to storage whenever state changes
+	useEffect(() => {
+		if (!loaded.current) return
+
+		if (saveTimer.current) clearTimeout(saveTimer.current)
+		saveTimer.current = setTimeout(async () => {
+			await browser.storage.local.set({ siteRules, endpoints, templates, globalSettings })
+			browser.runtime.sendMessage({ action: 'updateSiteRules', siteRules })
+			browser.runtime.sendMessage({ action: 'updateGlobalSettings', globalSettings })
+		}, 500)
+
+		return () => {
+			if (saveTimer.current) clearTimeout(saveTimer.current)
+		}
+	}, [siteRules, endpoints, templates, globalSettings])
 
 	// Apply theme and watch for system changes
 	useEffect(() => {
@@ -59,19 +82,8 @@ export default function App() {
 		applyTheme(theme)
 	}
 
-	async function save() {
-		await browser.storage.local.set({ siteRules, endpoints, templates, globalSettings })
-
-		// Notify background to sync scheduler
-		browser.runtime.sendMessage({ action: 'updateSiteRules', siteRules })
-		browser.runtime.sendMessage({ action: 'updateGlobalSettings', globalSettings })
-
-		setSaved(true)
-		setTimeout(() => setSaved(false), 2000)
-	}
-
 	return (
-		<div className="mx-auto min-h-screen max-w-4xl bg-background p-6 pb-20">
+		<div className="mx-auto min-h-screen max-w-4xl bg-background p-6">
 			{/* Header */}
 			<div className="mb-6 flex items-center justify-between">
 				<h1 className="text-xl font-bold text-foreground">{t('settings.title')}</h1>
@@ -133,6 +145,8 @@ export default function App() {
 							<p className="mt-2 text-xs text-muted-foreground">{t('general.keyboardCustomize')}</p>
 						</div>
 
+						<SendHistoryPanel />
+
 						<div className="rounded-lg border p-4">
 							<h3 className="mb-2 text-sm font-medium">{t('general.about')}</h3>
 							<p className="text-sm text-muted-foreground">{t('general.aboutDesc')}</p>
@@ -152,21 +166,6 @@ export default function App() {
 				</TabsContent>
 			</Tabs>
 
-			{/* Sticky save bar */}
-			<div className="fixed bottom-0 left-0 right-0 z-20 border-t bg-background/80 backdrop-blur-sm">
-				<div className="mx-auto flex max-w-4xl items-center justify-end px-6 py-3">
-					<Button onClick={save} size="sm">
-						{saved ? (
-							<>
-								<Check className="h-4 w-4" />
-								{t('settings.saved')}
-							</>
-						) : (
-							t('settings.save')
-						)}
-					</Button>
-				</div>
-			</div>
 		</div>
 	)
 }

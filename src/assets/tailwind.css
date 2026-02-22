@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@theme inline {
+@theme {
 	--color-background: oklch(1 0 0);
 	--color-foreground: oklch(0.145 0 0);
 	--color-card: oklch(1 0 0);
@@ -20,7 +20,13 @@
 	--color-border: oklch(0.922 0 0);
 	--color-input: oklch(0.922 0 0);
 	--color-ring: oklch(0.45 0.2 264);
+	--color-success: oklch(0.627 0.194 149.214);
 	--radius: 0.625rem;
+}
+
+body {
+	background-color: var(--color-background);
+	color: var(--color-foreground);
 }
 
 :root.dark {
@@ -43,4 +49,5 @@
 	--color-border: oklch(0.3 0 0);
 	--color-input: oklch(0.3 0 0);
 	--color-ring: oklch(0.6 0.2 264);
+	--color-success: oklch(0.75 0.18 149.214);
 }

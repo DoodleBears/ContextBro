@@ -17,25 +17,30 @@ import { ALLOWLIST_PRESETS } from '@/lib/allowlist'
 import { useLocale } from '@/lib/i18n'
 import type { ContextBroTemplate, Endpoint, SiteRule } from '@/lib/types'
 
-const INTERVAL_OPTIONS = [
-	{ value: 1, key: 'interval.1min' },
-	{ value: 2, key: 'interval.2min' },
-	{ value: 5, key: 'interval.5min' },
-	{ value: 10, key: 'interval.10min' },
-	{ value: 15, key: 'interval.15min' },
-	{ value: 30, key: 'interval.30min' },
-	{ value: 60, key: 'interval.1hour' },
-	{ value: 120, key: 'interval.2hours' },
-]
+type IntervalUnit = 'minutes' | 'hours'
 
-const DEDUP_WINDOW_OPTIONS = [
-	{ value: 0, key: 'dedup.disabled' },
-	{ value: 5, key: 'dedup.5min' },
-	{ value: 10, key: 'dedup.10min' },
-	{ value: 15, key: 'dedup.15min' },
-	{ value: 30, key: 'dedup.30min' },
-	{ value: 60, key: 'dedup.1hour' },
-]
+function toMinutes(value: number, unit: IntervalUnit): number {
+	return unit === 'hours' ? value * 60 : value
+}
+
+function fromMinutes(minutes: number): { value: number; unit: IntervalUnit } {
+	if (minutes >= 60 && minutes % 60 === 0) return { value: minutes / 60, unit: 'hours' }
+	return { value: minutes, unit: 'minutes' }
+}
+
+type DedupUnit = 'seconds' | 'minutes' | 'hours'
+
+function toSeconds(value: number, unit: DedupUnit): number {
+	if (unit === 'hours') return value * 3600
+	if (unit === 'minutes') return value * 60
+	return value
+}
+
+function fromSeconds(seconds: number): { value: number; unit: DedupUnit } {
+	if (seconds >= 3600 && seconds % 3600 === 0) return { value: seconds / 3600, unit: 'hours' }
+	if (seconds >= 60 && seconds % 60 === 0) return { value: seconds / 60, unit: 'minutes' }
+	return { value: seconds, unit: 'seconds' }
+}
 
 interface Props {
 	siteRules: SiteRule[]
@@ -73,7 +78,8 @@ export function SiteRuleEditor({
 				autoShare: false,
 				intervalMinutes: 15,
 				scheduleMode: 'focused',
-				dedupWindowMinutes: 15,
+				dedupEnabled: true,
+				dedupWindowSeconds: 900,
 			},
 		])
 		setNewPattern('')
@@ -137,7 +143,8 @@ export function SiteRuleEditor({
 				autoShare: false,
 				intervalMinutes: 15,
 				scheduleMode: 'focused' as const,
-				dedupWindowMinutes: 15,
+				dedupEnabled: true,
+				dedupWindowSeconds: 900,
 			}))
 
 		if (newRules.length > 0) {
@@ -274,14 +281,14 @@ export function SiteRuleEditor({
 								</div>
 							</div>
 
-							{/* Row 3: Auto-share + Schedule mode + Interval + Dedup */}
+							{/* Row 3: Auto-capture + Schedule mode + Interval + Dedup */}
 							<div className="flex flex-wrap items-center gap-3 pt-1 border-t border-border/50">
 								<div className="flex items-center gap-2">
 									<Switch
 										checked={rule.autoShare}
 										onCheckedChange={(checked) => updateRule(rule.id, { autoShare: checked })}
 									/>
-									<Label className="text-xs">{t('sites.autoShare')}</Label>
+									<Label className="text-xs">{t('sites.autoCapture')}</Label>
 								</div>
 								{rule.autoShare && (
 									<>
@@ -291,60 +298,126 @@ export function SiteRuleEditor({
 												updateRule(rule.id, { scheduleMode: v as 'focused' | 'any_tab' })
 											}
 										>
-											<SelectTrigger className="h-7 w-[130px] text-xs">
+											<SelectTrigger className="h-7 w-[160px] text-xs">
 												<SelectValue />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value="focused">{t('sites.focusedTab')}</SelectItem>
-												<SelectItem value="any_tab">{t('sites.anyTab')}</SelectItem>
+												<SelectItem value="focused" textValue={t('sites.focusedTab')}>
+													<div>
+														<div>{t('sites.focusedTab')}</div>
+														<div className="text-[10px] text-muted-foreground font-normal">
+															{t('sites.focusedTabDesc')}
+														</div>
+													</div>
+												</SelectItem>
+												<SelectItem value="any_tab" textValue={t('sites.anyTab')}>
+													<div>
+														<div>{t('sites.anyTab')}</div>
+														<div className="text-[10px] text-muted-foreground font-normal">
+															{t('sites.anyTabDesc')}
+														</div>
+													</div>
+												</SelectItem>
 											</SelectContent>
 										</Select>
 
 										{/* Interval — only for any_tab mode */}
 										{rule.scheduleMode === 'any_tab' && (
+											<div className="flex items-center gap-1.5">
+												<span className="text-xs whitespace-nowrap">{t('sites.every')}</span>
+												<Input
+													type="number"
+													min={1}
+													value={fromMinutes(rule.intervalMinutes).value}
+													onChange={(e) => {
+														const num = Number.parseInt(e.target.value, 10)
+														if (!Number.isNaN(num) && num > 0) {
+															const unit = fromMinutes(rule.intervalMinutes).unit
+															updateRule(rule.id, {
+																intervalMinutes: Math.max(1, toMinutes(num, unit)),
+															})
+														}
+													}}
+													className="h-7 w-16 text-xs text-center"
+												/>
+												<Select
+													value={fromMinutes(rule.intervalMinutes).unit}
+													onValueChange={(newUnit) => {
+														const { value } = fromMinutes(rule.intervalMinutes)
+														updateRule(rule.id, {
+															intervalMinutes: Math.max(
+																1,
+																toMinutes(value, newUnit as IntervalUnit),
+															),
+														})
+													}}
+												>
+													<SelectTrigger className="h-7 w-[76px] text-xs">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="minutes">{t('sites.unitMinutes')}</SelectItem>
+														<SelectItem value="hours">{t('sites.unitHours')}</SelectItem>
+													</SelectContent>
+												</Select>
+											</div>
+										)}
+									</>
+								)}
+
+								{/* Dedup — toggle + number + unit */}
+								<div className="flex items-center gap-1.5">
+									<Checkbox
+										checked={rule.dedupEnabled}
+										onCheckedChange={(checked) => updateRule(rule.id, { dedupEnabled: !!checked })}
+									/>
+									<Label className="text-xs">{t('sites.dedup')}</Label>
+									{rule.dedupEnabled && (
+										<>
+											<Input
+												type="number"
+												min={1}
+												value={fromSeconds(rule.dedupWindowSeconds ?? 900).value}
+												onChange={(e) => {
+													const num = Number.parseInt(e.target.value, 10)
+													if (!Number.isNaN(num) && num > 0) {
+														const unit = fromSeconds(rule.dedupWindowSeconds ?? 900).unit
+														updateRule(rule.id, {
+															dedupWindowSeconds: toSeconds(num, unit),
+														})
+													}
+												}}
+												className="h-7 w-16 text-xs text-center"
+											/>
 											<Select
-												value={String(rule.intervalMinutes)}
-												onValueChange={(v) => updateRule(rule.id, { intervalMinutes: Number(v) })}
+												value={fromSeconds(rule.dedupWindowSeconds ?? 900).unit}
+												onValueChange={(newUnit) => {
+													const { value } = fromSeconds(rule.dedupWindowSeconds ?? 900)
+													updateRule(rule.id, {
+														dedupWindowSeconds: toSeconds(value, newUnit as DedupUnit),
+													})
+												}}
 											>
-												<SelectTrigger className="h-7 w-[100px] text-xs">
+												<SelectTrigger className="h-7 w-[76px] text-xs">
 													<SelectValue />
 												</SelectTrigger>
 												<SelectContent>
-													{INTERVAL_OPTIONS.map((opt) => (
-														<SelectItem key={opt.value} value={String(opt.value)}>
-															{t(opt.key)}
-														</SelectItem>
-													))}
+													<SelectItem value="seconds">{t('sites.unitSeconds')}</SelectItem>
+													<SelectItem value="minutes">{t('sites.unitMinutes')}</SelectItem>
+													<SelectItem value="hours">{t('sites.unitHours')}</SelectItem>
 												</SelectContent>
 											</Select>
-										)}
-
-										{/* Dedup window — both modes */}
-										<Select
-											value={String(rule.dedupWindowMinutes ?? 15)}
-											onValueChange={(v) => updateRule(rule.id, { dedupWindowMinutes: Number(v) })}
-										>
-											<SelectTrigger className="h-7 w-[120px] text-xs">
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												{DEDUP_WINDOW_OPTIONS.map((opt) => (
-													<SelectItem key={opt.value} value={String(opt.value)}>
-														{t(opt.key)}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</>
-								)}
+										</>
+									)}
+								</div>
 							</div>
 						</div>
 					</Card>
 				))}
 			</div>
 
-			{/* Add site — sticky above the save bar */}
-			<div className="sticky bottom-16 z-10 -mx-1 rounded-lg border bg-background/80 p-3 backdrop-blur-sm">
+			{/* Add site */}
+			<div className="sticky bottom-0 z-10 -mx-1 rounded-lg border bg-background/80 p-3 backdrop-blur-sm">
 				<div className="flex gap-2">
 					<Input
 						value={newPattern}

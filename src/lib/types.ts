@@ -31,12 +31,25 @@ export interface SiteRule {
 	autoShare: boolean
 	intervalMinutes: number
 	scheduleMode: 'focused' | 'any_tab'
-	dedupWindowMinutes: number
+	dedupEnabled: boolean
+	dedupWindowSeconds: number
 }
 
 export interface GlobalSettings {
 	locale: 'en' | 'zh' | 'ja'
 	theme: 'system' | 'light' | 'dark'
+}
+
+export interface SendHistoryEntry {
+	id: string
+	timestamp: number
+	url: string
+	endpointName: string
+	rulePattern?: string
+	trigger: 'scheduler' | 'focused' | 'manual'
+	ok: boolean
+	status: number
+	statusText: string
 }
 
 /** @deprecated Use SiteRule instead */
