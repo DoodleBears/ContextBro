@@ -52,7 +52,11 @@ export abstract class BaseAdapter implements PlatformAdapter {
 			this.processTimer = null
 		}
 		if (this.storageListener) {
-			browser.storage.onChanged.removeListener(this.storageListener)
+			try {
+				browser.storage.onChanged.removeListener(this.storageListener)
+			} catch {
+				// Extension context may already be invalidated
+			}
 			this.storageListener = null
 		}
 	}

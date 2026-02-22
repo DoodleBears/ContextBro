@@ -106,9 +106,13 @@ export default defineContentScript({
 
 		// Cleanup when extension context is invalidated (extension reload/update)
 		ctx.onInvalidated(() => {
-			if (adapter) {
-				adapter.destroy()
-				adapter = null
+			try {
+				if (adapter) {
+					adapter.destroy()
+					adapter = null
+				}
+			} catch {
+				// Extension context already gone
 			}
 		})
 
