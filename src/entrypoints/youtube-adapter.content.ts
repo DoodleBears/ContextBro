@@ -1,53 +1,120 @@
+import type { ContentScriptContext } from 'wxt/utils/content-script-context'
 import type { ChatBatch, TranscriptChunk } from '@/lib/adapters/types'
 import { YouTubeAdapter } from '@/lib/adapters/youtube'
 import type { LiveStreamConfig } from '@/lib/types'
 
 export default defineContentScript({
-	matches: ['*://*.youtube.com/watch*', '*://*.youtube.com/live*'],
+	matches: ['*://*.youtube.com/*'],
 	runAt: 'document_idle',
-	async main() {
+	async main(ctx: ContentScriptContext) {
 		// Early exit if YouTube adapter is disabled
 		const stored = await browser.storage.local.get('liveStreamConfig')
 		const config = stored.liveStreamConfig as LiveStreamConfig | undefined
 		if (config && !config.youtube.enabled) return
 
-		const adapter = new YouTubeAdapter()
-		const url = new URL(window.location.href)
+		let adapter: YouTubeAdapter | null = null
+		let currentUrl = window.location.href
 
-		if (!adapter.match(url)) return
+		async function startAdapter() {
+			adapter = new YouTubeAdapter()
+			const url = new URL(window.location.href)
 
-		console.debug('[context-bro] YouTube adapter initializing')
+			if (!adapter.match(url)) {
+				adapter = null
+				return
+			}
 
-		adapter.onChatBatch((batch: ChatBatch) => {
-			browser.runtime.sendMessage({
-				action: 'adapterChatBatch',
-				batch,
+			console.debug('[context-bro] YouTube adapter initializing')
+
+			adapter.onChatBatch((batch: ChatBatch) => {
+				if (ctx.isInvalid) return
+				browser.runtime
+					.sendMessage({
+						action: 'adapterChatBatch',
+						batch,
+					})
+					.catch(() => {})
 			})
+
+			adapter.onTranscript?.((chunk: TranscriptChunk) => {
+				if (ctx.isInvalid) return
+				browser.runtime
+					.sendMessage({
+						action: 'adapterTranscript',
+						chunk,
+					})
+					.catch(() => {})
+			})
+
+			await adapter.init()
+
+			// Notify background that adapter is active
+			if (ctx.isInvalid) return
+			const streamInfo = adapter.getStreamInfo()
+			browser.runtime
+				.sendMessage({
+					action: 'adapterActive',
+					platform: 'youtube',
+					streamInfo,
+				})
+				.catch(() => {})
+
+			// YouTube lazily renders channel name — retry after a delay if empty
+			if (!streamInfo?.channelName) {
+				const currentAdapter = adapter
+				setTimeout(() => {
+					if (ctx.isInvalid || currentAdapter !== adapter) return
+					const freshInfo = currentAdapter.getStreamInfo()
+					if (freshInfo?.channelName) {
+						browser.runtime
+							.sendMessage({
+								action: 'adapterActive',
+								platform: 'youtube',
+								streamInfo: freshInfo,
+							})
+							.catch(() => {})
+					}
+				}, 3000)
+			}
+		}
+
+		function stopAdapter() {
+			if (!adapter) return
+			adapter.destroy()
+			adapter = null
+			if (ctx.isInvalid) return
+			browser.runtime
+				.sendMessage({
+					action: 'adapterInactive',
+					platform: 'youtube',
+				})
+				.catch(() => {})
+		}
+
+		// YouTube SPA navigation: reinitialize adapter when URL changes
+		document.addEventListener('yt-navigate-finish', async () => {
+			if (ctx.isInvalid) return
+			const newUrl = window.location.href
+			if (newUrl === currentUrl) return
+			currentUrl = newUrl
+			console.debug('[context-bro] YouTube SPA navigation detected')
+			stopAdapter()
+			await startAdapter()
 		})
 
-		adapter.onTranscript?.((chunk: TranscriptChunk) => {
-			browser.runtime.sendMessage({
-				action: 'adapterTranscript',
-				chunk,
-			})
-		})
+		await startAdapter()
 
-		await adapter.init()
-
-		// Notify background that adapter is active
-		browser.runtime.sendMessage({
-			action: 'adapterActive',
-			platform: 'youtube',
-			streamInfo: adapter.getStreamInfo(),
+		// Cleanup when extension context is invalidated (extension reload/update)
+		ctx.onInvalidated(() => {
+			if (adapter) {
+				adapter.destroy()
+				adapter = null
+			}
 		})
 
 		// Cleanup on page unload
 		window.addEventListener('beforeunload', () => {
-			adapter.destroy()
-			browser.runtime.sendMessage({
-				action: 'adapterInactive',
-				platform: 'youtube',
-			})
+			stopAdapter()
 		})
 	},
 })

@@ -34,6 +34,10 @@ export class YouTubeAdapter extends BaseAdapter {
 	}
 
 	getStreamInfo(): StreamInfo | null {
+		// Retry building stream info if channel name was empty (YouTube renders lazily)
+		if (this.streamInfo && !this.streamInfo.channelName) {
+			this.streamInfo = this.buildStreamInfo()
+		}
 		return this.streamInfo
 	}
 
@@ -339,31 +343,53 @@ export class YouTubeAdapter extends BaseAdapter {
 		if (currentTime <= this.lastTranscriptTime + this.config.transcript.progressThresholdS) return
 		this.lastTranscriptTime = currentTime
 
-		// Try to get transcript segments
-		const segments = document.querySelectorAll('ytd-transcript-segment-renderer')
-		if (segments.length === 0) return
-
-		// Find segments near current time that haven't been sent yet
+		// Try transcript panel DOM first, then fall back to textTracks (CC/subtitles)
 		const newText: string[] = []
 		let segStartTime = 0
 		let segEndTime = 0
 
-		for (const seg of segments) {
-			const timeEl = seg.querySelector('.segment-timestamp')
-			const textEl = seg.querySelector('.segment-text')
-			if (!timeEl || !textEl) continue
+		// Strategy 1: Transcript panel DOM (ytd-transcript-segment-renderer)
+		const segments = document.querySelectorAll('ytd-transcript-segment-renderer')
+		if (segments.length > 0) {
+			for (const seg of segments) {
+				const timeEl = seg.querySelector('.segment-timestamp')
+				const textEl = seg.querySelector('.segment-text')
+				if (!timeEl || !textEl) continue
 
-			const segTime = this.parseTimestamp(timeEl.textContent?.trim() || '')
-			if (segTime < currentTime - 5 || segTime > currentTime + 5) continue
+				const segTime = this.parseTimestamp(timeEl.textContent?.trim() || '')
+				if (segTime < currentTime - 5 || segTime > currentTime + 5) continue
 
-			const roundedTime = Math.round(segTime)
-			if (this.sentSegments.has(roundedTime)) continue
+				const roundedTime = Math.round(segTime)
+				if (this.sentSegments.has(roundedTime)) continue
 
-			this.sentSegments.add(roundedTime)
-			newText.push(textEl.textContent?.trim() || '')
+				this.sentSegments.add(roundedTime)
+				newText.push(textEl.textContent?.trim() || '')
 
-			if (!segStartTime || segTime < segStartTime) segStartTime = segTime
-			if (segTime > segEndTime) segEndTime = segTime
+				if (!segStartTime || segTime < segStartTime) segStartTime = segTime
+				if (segTime > segEndTime) segEndTime = segTime
+			}
+		}
+
+		// Strategy 2: video.textTracks API (CC/subtitles)
+		if (newText.length === 0 && video.textTracks) {
+			for (let i = 0; i < video.textTracks.length; i++) {
+				const track = video.textTracks[i]
+				if (track.mode !== 'showing' || !track.activeCues) continue
+
+				for (let j = 0; j < track.activeCues.length; j++) {
+					const cue = track.activeCues[j] as VTTCue
+					const roundedStart = Math.round(cue.startTime)
+					if (this.sentSegments.has(roundedStart)) continue
+
+					this.sentSegments.add(roundedStart)
+					const text = cue.text?.replace(/<[^>]*>/g, '').trim()
+					if (text) {
+						newText.push(text)
+						if (!segStartTime || cue.startTime < segStartTime) segStartTime = cue.startTime
+						if (cue.endTime > segEndTime) segEndTime = cue.endTime
+					}
+				}
+			}
 		}
 
 		// Safety prune: if set grows too large (very long video), trim older half

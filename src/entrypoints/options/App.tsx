@@ -55,7 +55,17 @@ export default function App() {
 		setEndpoints((result.endpoints as Endpoint[]) || [])
 		setTemplates((result.templates as ContextBroTemplate[]) || [])
 		setGlobalSettings((result.globalSettings as GlobalSettings) || DEFAULT_GLOBAL_SETTINGS)
-		setLiveStreamConfig((result.liveStreamConfig as LiveStreamConfig) || DEFAULT_LIVE_STREAM_CONFIG)
+		const storedLs = (result.liveStreamConfig as Partial<LiveStreamConfig>) || {}
+		setLiveStreamConfig({
+			...DEFAULT_LIVE_STREAM_CONFIG,
+			...storedLs,
+			youtube: { ...DEFAULT_LIVE_STREAM_CONFIG.youtube, ...storedLs.youtube },
+			twitch: { ...DEFAULT_LIVE_STREAM_CONFIG.twitch, ...storedLs.twitch },
+			flush: { ...DEFAULT_LIVE_STREAM_CONFIG.flush, ...storedLs.flush },
+			sampling: { ...DEFAULT_LIVE_STREAM_CONFIG.sampling, ...storedLs.sampling },
+			dedup: { ...DEFAULT_LIVE_STREAM_CONFIG.dedup, ...storedLs.dedup },
+			transcript: { ...DEFAULT_LIVE_STREAM_CONFIG.transcript, ...storedLs.transcript },
+		})
 		// Mark loaded after a tick so the auto-save effect doesn't fire for the initial set
 		requestAnimationFrame(() => {
 			loaded.current = true
@@ -185,7 +195,12 @@ export default function App() {
 
 				<TabsContent value="livestream">
 					<p className="mb-5 text-sm text-muted-foreground">{t('livestream.description')}</p>
-					<LiveStreamEditor config={liveStreamConfig} onChange={setLiveStreamConfig} />
+					<LiveStreamEditor
+						config={liveStreamConfig}
+						endpoints={endpoints}
+						onChange={setLiveStreamConfig}
+						onNavigateToTab={setActiveTab}
+					/>
 				</TabsContent>
 
 				<TabsContent value="general">

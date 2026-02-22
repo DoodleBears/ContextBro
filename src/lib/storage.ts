@@ -12,10 +12,41 @@ const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
 	theme: 'system',
 }
 
+export const DEFAULT_CHAT_BODY_TEMPLATE = `{
+  "event_type": "live_stream",
+  "platform": {{platform|json_stringify}},
+  "channel": {{channel|json_stringify}},
+  "title": {{title|json_stringify}},
+  "category": {{category|json_stringify}},
+  "viewers": {{viewers}},
+  "isLive": {{isLive}},
+  "totalMessages": {{totalMessages}},
+  "sampledMessages": {{sampledMessages}},
+  "messages": {{messages}},
+  "donations": {{donations}},
+  "memberships": {{memberships}},
+  "timestamp": {{timestamp|json_stringify}}
+}`
+
+export const DEFAULT_TRANSCRIPT_BODY_TEMPLATE = `{
+  "event_type": "transcript",
+  "platform": {{platform|json_stringify}},
+  "videoId": {{videoId|json_stringify}},
+  "title": {{title|json_stringify}},
+  "channel": {{channel|json_stringify}},
+  "text": {{text|json_stringify}},
+  "currentTime": {{currentTime}},
+  "duration": {{duration}},
+  "timestamp": {{timestamp|json_stringify}}
+}`
+
 export const DEFAULT_LIVE_STREAM_CONFIG: LiveStreamConfig = {
 	youtube: { enabled: true, chat: true, transcript: true },
 	twitch: { enabled: true, chat: true },
-	flush: { debounceMs: 3000, maxWaitMs: 15000 },
+	endpointIds: [],
+	chatBodyTemplate: DEFAULT_CHAT_BODY_TEMPLATE,
+	transcriptBodyTemplate: DEFAULT_TRANSCRIPT_BODY_TEMPLATE,
+	flush: { mode: 'batched', debounceMs: 3000, maxWaitMs: 15000 },
 	sampling: { maxMessagesPerBatch: 100 },
 	dedup: { enabled: true, windowMs: 10000, aggregateSpam: false },
 	transcript: { pollIntervalMs: 5000, progressThresholdS: 1 },

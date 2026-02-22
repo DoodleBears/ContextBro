@@ -1,4 +1,8 @@
-import { DEFAULT_LIVE_STREAM_CONFIG } from '@/lib/storage'
+import {
+	DEFAULT_CHAT_BODY_TEMPLATE,
+	DEFAULT_LIVE_STREAM_CONFIG,
+	DEFAULT_TRANSCRIPT_BODY_TEMPLATE,
+} from '@/lib/storage'
 import type { Endpoint, GlobalSettings, ScheduleConfig } from '@/lib/types'
 
 /**
@@ -229,5 +233,52 @@ export async function migrateV7ToV8(): Promise<boolean> {
 
 	await browser.storage.local.set({ liveStreamConfig: DEFAULT_LIVE_STREAM_CONFIG })
 	console.debug('[migration] V7→V8: added liveStreamConfig defaults')
+	return true
+}
+
+/**
+ * Migrate from v8 to v9:
+ * - Add `endpointIds`, `chatBodyTemplate`, `transcriptBodyTemplate` to liveStreamConfig
+ * Idempotent — skips if endpointIds already exists.
+ */
+export async function migrateV8ToV9(): Promise<boolean> {
+	const result = await browser.storage.local.get(['liveStreamConfig'])
+	const config = result.liveStreamConfig as Record<string, unknown> | undefined
+
+	if (!config) return false
+	if (config.endpointIds !== undefined) return false
+
+	await browser.storage.local.set({
+		liveStreamConfig: {
+			...config,
+			endpointIds: [],
+			chatBodyTemplate: DEFAULT_CHAT_BODY_TEMPLATE,
+			transcriptBodyTemplate: DEFAULT_TRANSCRIPT_BODY_TEMPLATE,
+		},
+	})
+	console.debug('[migration] V8→V9: added endpoint/template fields to liveStreamConfig')
+	return true
+}
+
+/**
+ * Migrate from v9 to v10:
+ * - Add `flush.mode` to liveStreamConfig (default 'batched')
+ * Idempotent — skips if flush.mode already exists.
+ */
+export async function migrateV9ToV10(): Promise<boolean> {
+	const result = await browser.storage.local.get(['liveStreamConfig'])
+	const config = result.liveStreamConfig as Record<string, unknown> | undefined
+
+	if (!config) return false
+	const flush = config.flush as Record<string, unknown> | undefined
+	if (!flush || flush.mode !== undefined) return false
+
+	await browser.storage.local.set({
+		liveStreamConfig: {
+			...config,
+			flush: { ...flush, mode: 'batched' },
+		},
+	})
+	console.debug('[migration] V9→V10: added flush.mode to liveStreamConfig')
 	return true
 }

@@ -74,9 +74,10 @@ export abstract class BaseAdapter implements PlatformAdapter {
 		this.storageListener = (changes) => {
 			if (changes.liveStreamConfig?.newValue) {
 				this.config = changes.liveStreamConfig.newValue as LiveStreamConfig
+				const { mode, debounceMs, maxWaitMs } = this.config.flush
 				this.flusher?.updateConfig(
-					this.config.flush.debounceMs,
-					this.config.flush.maxWaitMs,
+					mode === 'immediate' ? 0 : debounceMs,
+					mode === 'immediate' ? 0 : maxWaitMs,
 				)
 			}
 		}
@@ -216,9 +217,10 @@ export abstract class BaseAdapter implements PlatformAdapter {
 	// ── Debounce-based flushing ──
 
 	private startFlushing(): void {
+		const { mode, debounceMs, maxWaitMs } = this.config.flush
 		this.flusher = new DebouncedFlusher({
-			debounceMs: this.config.flush.debounceMs,
-			maxWaitMs: this.config.flush.maxWaitMs,
+			debounceMs: mode === 'immediate' ? 0 : debounceMs,
+			maxWaitMs: mode === 'immediate' ? 0 : maxWaitMs,
 			onFlush: () => this.flush(),
 		})
 	}

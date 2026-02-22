@@ -47,7 +47,11 @@ export interface GlobalSettings {
 export interface LiveStreamConfig {
 	youtube: { enabled: boolean; chat: boolean; transcript: boolean }
 	twitch: { enabled: boolean; chat: boolean }
+	endpointIds: string[]
+	chatBodyTemplate: string
+	transcriptBodyTemplate: string
 	flush: {
+		mode: 'immediate' | 'batched'
 		debounceMs: number
 		maxWaitMs: number
 	}
@@ -71,7 +75,7 @@ export interface SendHistoryEntry {
 	url: string
 	endpointName: string
 	ruleName?: string
-	trigger: 'scheduler' | 'focused' | 'manual'
+	trigger: 'scheduler' | 'focused' | 'manual' | 'livestream'
 	ok: boolean
 	status: number
 	statusText: string
