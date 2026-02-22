@@ -1,25 +1,35 @@
 ---
-title: Privacy & Allowlist
-description: Context Bro's allowlist-first privacy model — default share nothing, explicit opt-in for every domain.
+title: Privacy Policy
+description: Context Bro Privacy Policy — allowlist-first, share-nothing-by-default.
 ---
 
-## Allowlist-First Model
+*Last updated: February 22, 2026*
 
-Context Bro follows a **share-nothing-by-default** privacy model:
+## Overview
 
-- **Manual sharing** works on any page (you explicitly trigger it)
-- **Auto-capture** only works on domains you've added to your Site Rules
-- **No data is ever sent** unless you've configured an endpoint and triggered a share
+Context Bro is a browser extension that helps you share web page context with AI agents. Your privacy is central to its design — the extension follows an **allowlist-first, share-nothing-by-default** model.
 
-## What Data Is Extracted
+## Data We Collect
 
-When you share a page, Context Bro extracts:
+**None.** Context Bro does not collect, transmit, or store any data on our servers. We have no servers. All configuration (endpoints, templates, site rules) is stored locally in your browser via `chrome.storage.local`.
 
-- Page title, URL, meta description, author
-- Main content (via [Defuddle](https://github.com/kepano/defuddle))
-- Selected text (if any)
-- Schema.org structured data
-- CSS selector queries (if your template uses `{{selector:...}}`)
+## Data You Choose to Share
+
+When you explicitly share a page (via the popup, context menu, keyboard shortcut, or floating button), the extension:
+
+- Extracts page content from the active tab (title, URL, meta description, author, main content via [Defuddle](https://github.com/kepano/defuddle), selected text, Schema.org structured data, CSS selector queries)
+- Compiles it using your configured template
+- Sends the compiled payload to **your own API endpoint** — a URL you configured yourself
+
+The extension never sends data anywhere unless you have configured an endpoint and triggered a share action.
+
+## Auto-Capture (Scheduled Sharing)
+
+If you enable auto-capture, the extension will periodically extract content **only from domains you explicitly added to your Site Rules**. Content is deduplicated (via SHA-256 hashing stored locally) to avoid sending unchanged pages. Hashes can be cleared from Settings at any time.
+
+## Live Stream Adapters
+
+On Twitch and YouTube live pages, optional adapters observe chat messages visible in your browser. Chat batches are sent to your configured endpoint. The adapters only activate on matching pages and can be disabled by not loading the extension on those sites.
 
 ## What Is NOT Collected
 
@@ -27,19 +37,15 @@ When you share a page, Context Bro extracts:
 - No browsing history
 - No passwords or form field contents
 - No data from incognito tabs
-- No server-side storage — **we have no servers**
+- No server-side storage
 
-## Where Data Goes
+## Third-Party Services
 
-Data is sent exclusively to **API endpoints you configure yourself**. Context Bro makes no network requests to any other destination.
+Context Bro does not integrate with any third-party analytics, tracking, or advertising services. The only network requests are to endpoints you configure.
 
-All settings (endpoints, templates, site rules) are stored locally in your browser via `chrome.storage.local`. Uninstalling the extension removes all data.
+## Data Retention
 
-## Content Deduplication
-
-When using auto-capture, Context Bro computes a SHA-256 hash of the extracted content. If the content hasn't changed since the last send (within the per-rule dedup window), it skips the page — avoiding duplicate payloads.
-
-Hashes are stored locally and can be cleared from Settings at any time.
+All data is stored locally in your browser. Uninstalling the extension removes all stored data. You can also clear data via Settings at any time.
 
 ## Permissions Explained
 
@@ -51,3 +57,11 @@ Hashes are stored locally and can be cleared from Settings at any time.
 | `alarms` | Power the scheduled sharing timer |
 | `tabs` | Query open tabs for scheduled extraction |
 | `contextMenus` | Add "Share to Context Bro" to the right-click menu |
+
+## Open Source
+
+Context Bro is open source under the MIT License. You can review the full source code to verify these claims.
+
+## Contact
+
+If you have questions about this privacy policy, please [open an issue](https://github.com/DoodleBears/ContextBro/issues) on the project's GitHub repository.

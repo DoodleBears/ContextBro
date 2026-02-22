@@ -66,8 +66,8 @@ export default defineConfig({
 							slug: 'concepts/architecture',
 						},
 						{
-							label: 'Privacy & Allowlist',
-							translations: { 'zh-CN': '隐私与允许列表', ja: 'プライバシーとAllowlist' },
+							label: 'Privacy Policy',
+							translations: { 'zh-CN': '隐私政策', ja: 'プライバシーポリシー' },
 							slug: 'concepts/privacy',
 						},
 					],
