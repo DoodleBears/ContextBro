@@ -26,6 +26,7 @@
 	"sites.unitSeconds": "秒",
 	"sites.unitMinutes": "分",
 	"sites.unitHours": "時間",
+	"sites.refetch": "定期再取得",
 	"sites.dedup": "重複排除",
 
 	"endpoints.description": "ページコンテキストの送信先APIエンドポイントを設定します。",

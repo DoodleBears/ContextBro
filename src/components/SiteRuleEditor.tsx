@@ -81,6 +81,8 @@ export function SiteRuleEditor({
 				autoShare: false,
 				intervalMinutes: 15,
 				scheduleMode: 'focused',
+				refetchEnabled: false,
+				refetchIntervalSeconds: 60,
 				dedupEnabled: true,
 				dedupWindowSeconds: 900,
 			},
@@ -148,6 +150,8 @@ export function SiteRuleEditor({
 			autoShare: false,
 			intervalMinutes: 15,
 			scheduleMode: 'focused',
+			refetchEnabled: false,
+			refetchIntervalSeconds: 60,
 			dedupEnabled: true,
 			dedupWindowSeconds: 900,
 		}
@@ -397,6 +401,72 @@ export function SiteRuleEditor({
 											</div>
 										)}
 									</>
+								)}
+
+								{/* Refetch — only for focused mode */}
+								{rule.autoShare && rule.scheduleMode === 'focused' && (
+									<div className="flex items-center gap-1.5">
+										<Checkbox
+											checked={rule.refetchEnabled}
+											onCheckedChange={(checked) =>
+												updateRule(rule.id, { refetchEnabled: !!checked })
+											}
+										/>
+										<Label className="text-xs">{t('sites.refetch')}</Label>
+										{rule.refetchEnabled && (
+											<>
+												<Input
+													type="number"
+													min={10}
+													value={fromSeconds(rule.refetchIntervalSeconds ?? 60).value}
+													onChange={(e) => {
+														const num = Number.parseInt(e.target.value, 10)
+														if (!Number.isNaN(num) && num > 0) {
+															const unit = fromSeconds(
+																rule.refetchIntervalSeconds ?? 60,
+															).unit
+															updateRule(rule.id, {
+																refetchIntervalSeconds: Math.max(
+																	10,
+																	toSeconds(num, unit),
+																),
+															})
+														}
+													}}
+													className="h-7 w-16 text-xs text-center"
+												/>
+												<Select
+													value={fromSeconds(rule.refetchIntervalSeconds ?? 60).unit}
+													onValueChange={(newUnit) => {
+														const { value } = fromSeconds(
+															rule.refetchIntervalSeconds ?? 60,
+														)
+														updateRule(rule.id, {
+															refetchIntervalSeconds: Math.max(
+																10,
+																toSeconds(value, newUnit as DedupUnit),
+															),
+														})
+													}}
+												>
+													<SelectTrigger className="h-7 w-[76px] text-xs">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="seconds">
+															{t('sites.unitSeconds')}
+														</SelectItem>
+														<SelectItem value="minutes">
+															{t('sites.unitMinutes')}
+														</SelectItem>
+														<SelectItem value="hours">
+															{t('sites.unitHours')}
+														</SelectItem>
+													</SelectContent>
+												</Select>
+											</>
+										)}
+									</div>
 								)}
 
 								{/* Dedup — toggle + number + unit */}

@@ -26,6 +26,7 @@
 	"sites.unitSeconds": "秒",
 	"sites.unitMinutes": "分钟",
 	"sites.unitHours": "小时",
+	"sites.refetch": "定时刷新",
 	"sites.dedup": "去重",
 
 	"endpoints.description": "配置接收页面内容的 API 接口。",

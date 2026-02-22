@@ -26,6 +26,7 @@
 	"sites.unitSeconds": "sec",
 	"sites.unitMinutes": "min",
 	"sites.unitHours": "hour",
+	"sites.refetch": "Refetch",
 	"sites.dedup": "Dedup",
 
 	"endpoints.description": "Configure API endpoints where page context will be sent.",
