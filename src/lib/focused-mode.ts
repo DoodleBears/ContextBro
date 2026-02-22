@@ -14,6 +14,7 @@ interface FocusedModeDeps {
 
 let dwellTimers: ReturnType<typeof setTimeout>[] = []
 const refetchTimers = new Map<string, ReturnType<typeof setInterval>>()
+let indicatorTabId: number | null = null
 
 /**
  * Initialize focused-mode event listeners.
@@ -35,7 +36,7 @@ export function initFocusedMode(deps: FocusedModeDeps): void {
 	// Window focus changed
 	browser.windows.onFocusChanged.addListener(async (windowId) => {
 		if (windowId === browser.windows.WINDOW_ID_NONE) {
-			cancelDwell()
+			cancelDwell() // also dismisses indicator
 			cancelRefetch()
 			return
 		}
@@ -55,6 +56,15 @@ function cancelDwell(): void {
 		clearTimeout(timer)
 	}
 	dwellTimers = []
+	dismissIndicator()
+}
+
+function dismissIndicator(): void {
+	if (indicatorTabId !== null) {
+		const tabId = indicatorTabId
+		indicatorTabId = null
+		browser.tabs.sendMessage(tabId, { action: 'dismissFocusedIndicator' }).catch(() => {})
+	}
 }
 
 function cancelRefetch(): void {
@@ -123,9 +133,32 @@ async function handleTabFocus(tabId: number, deps: FocusedModeDeps): Promise<voi
 
 	if (matchingRules.length === 0) return
 
-	// Group matching rules by dwell time
 	const capturedTabId = tabId
 	const capturedUrl = tab.url
+
+	// Notify the page that focused-mode is active
+	const allEndpoints = await deps.getEndpoints()
+	const endpointNames: string[] = []
+	for (const rule of matchingRules) {
+		const targets =
+			rule.endpointIds.length > 0
+				? allEndpoints.filter((e) => e.enabled && rule.endpointIds.includes(e.id))
+				: allEndpoints.filter((e) => e.enabled).slice(0, 1)
+		for (const ep of targets) {
+			if (!endpointNames.includes(ep.name)) endpointNames.push(ep.name)
+		}
+	}
+	indicatorTabId = capturedTabId
+	try {
+		await browser.tabs.sendMessage(capturedTabId, {
+			action: 'showFocusedIndicator',
+			endpointNames,
+		})
+	} catch {
+		// Content script may not be loaded yet
+	}
+
+	// Group matching rules by dwell time
 
 	const byDwell = new Map<number, SiteRule[]>()
 	for (const rule of matchingRules) {
@@ -146,6 +179,7 @@ async function handleTabFocus(tabId: number, deps: FocusedModeDeps): Promise<voi
 			}
 
 			await extractForFocusedRules(capturedTabId, capturedUrl, rules, deps)
+			dismissIndicator()
 
 			// Start refetch timers for rules that have it enabled
 			for (const rule of rules) {

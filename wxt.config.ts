@@ -17,5 +17,11 @@ export default defineConfig({
 				description: 'Share selection to Context Bro',
 			},
 		},
+		web_accessible_resources: [
+			{
+				resources: ['icon/*.png'],
+				matches: ['<all_urls>'],
+			},
+		],
 	},
 })

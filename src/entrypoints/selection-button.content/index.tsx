@@ -23,10 +23,9 @@ export default defineContentScript({
 			},
 		})
 
-		// Track mouse position for button placement
+		// Track mouse as fallback for selection positioning
 		let mouseX = 0
 		let mouseY = 0
-
 		document.addEventListener('mousemove', (e) => {
 			mouseX = e.clientX
 			mouseY = e.clientY
@@ -38,14 +37,33 @@ export default defineContentScript({
 				const selection = window.getSelection()
 				const text = selection?.toString().trim() || ''
 
-				if (text.length > 0) {
+				if (text.length > 0 && selection && selection.rangeCount > 0) {
 					currentSelection = text
-					// Position near mouse
+					const range = selection.getRangeAt(0)
+					const rect = range.getBoundingClientRect()
+
+					let left: number
+					let top: number
+
+					if (rect.width > 0 && rect.height > 0) {
+						// Position below the selection end, clamped to viewport
+						left = Math.min(rect.right, window.innerWidth - 130)
+						top = rect.bottom + 6
+						if (rect.bottom + 50 > window.innerHeight) {
+							top = rect.top - 40
+						}
+					} else {
+						// Fallback to mouse position
+						left = mouseX + 10
+						top = mouseY - 40
+					}
+
+					// Mount first, then position — WXT overlay may reset styles on mount
+					ui.mount()
 					const host = ui.shadowHost
 					host.style.position = 'fixed'
-					host.style.left = `${mouseX + 10}px`
-					host.style.top = `${mouseY - 40}px`
-					ui.mount()
+					host.style.left = `${left}px`
+					host.style.top = `${top}px`
 				} else {
 					ui.remove()
 					currentSelection = ''
