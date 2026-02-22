@@ -83,7 +83,7 @@ async function handleTabFocus(tabId: number, deps: FocusedModeDeps): Promise<voi
 			r.enabled &&
 			r.autoShare &&
 			r.scheduleMode === 'focused' &&
-			matchesPattern(hostname, r.pattern),
+			r.patterns.some((p) => matchesPattern(hostname, p)),
 	)
 
 	if (matchingRules.length === 0) return
@@ -167,7 +167,7 @@ async function extractForFocusedRules(
 					timestamp: now,
 					url,
 					endpointName: targetEndpoints[i].name,
-					rulePattern: rule.pattern,
+					ruleName: rule.name,
 					trigger: 'focused',
 					ok,
 					status,
@@ -177,7 +177,7 @@ async function extractForFocusedRules(
 
 			const anySuccess = results.some((r) => r.status === 'fulfilled' && r.value.ok)
 			if (anySuccess) {
-				lastSharedAt[rule.pattern] = now
+				lastSharedAt[rule.id] = now
 				lastSharedUpdated = true
 			}
 		} catch (error) {

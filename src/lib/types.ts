@@ -24,7 +24,8 @@ export interface Property {
 
 export interface SiteRule {
 	id: string
-	pattern: string
+	name: string
+	patterns: string[]
 	enabled: boolean
 	templateId?: string
 	endpointIds: string[]
@@ -45,7 +46,7 @@ export interface SendHistoryEntry {
 	timestamp: number
 	url: string
 	endpointName: string
-	rulePattern?: string
+	ruleName?: string
 	trigger: 'scheduler' | 'focused' | 'manual'
 	ok: boolean
 	status: number

@@ -1,29 +1,4 @@
-import type { AllowlistEntry, SiteRule } from '@/lib/types'
-
-/**
- * Check if a URL matches any enabled allowlist entry.
- * Supports:
- * - Exact domain: "github.com"
- * - Wildcard subdomain: "*.reddit.com" (matches www.reddit.com, old.reddit.com, etc.)
- * - Localhost with port: "localhost:3000"
- */
-export function matchesAllowlist(url: string, allowlist: AllowlistEntry[]): AllowlistEntry | null {
-	let hostname: string
-	try {
-		hostname = new URL(url).hostname
-	} catch {
-		return null
-	}
-
-	for (const entry of allowlist) {
-		if (!entry.enabled) continue
-		if (matchesPattern(hostname, entry.pattern)) {
-			return entry
-		}
-	}
-
-	return null
-}
+import type { SiteRule } from '@/lib/types'
 
 export function matchesPattern(hostname: string, pattern: string): boolean {
 	const normalizedPattern = pattern.toLowerCase().trim()
@@ -41,23 +16,19 @@ export function matchesPattern(hostname: string, pattern: string): boolean {
 
 /**
  * Check if a URL matches any enabled site rule.
+ * Returns all matching rules (a URL can match multiple rules).
  */
-export function matchesSiteRules(url: string, rules: SiteRule[]): SiteRule | null {
+export function matchesSiteRules(url: string, rules: SiteRule[]): SiteRule[] {
 	let hostname: string
 	try {
 		hostname = new URL(url).hostname
 	} catch {
-		return null
+		return []
 	}
 
-	for (const rule of rules) {
-		if (!rule.enabled) continue
-		if (matchesPattern(hostname, rule.pattern)) {
-			return rule
-		}
-	}
-
-	return null
+	return rules.filter(
+		(rule) => rule.enabled && rule.patterns.some((p) => matchesPattern(hostname, p)),
+	)
 }
 
 /** Built-in allowlist presets for quick setup */

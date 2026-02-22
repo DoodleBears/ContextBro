@@ -13,6 +13,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { ALLOWLIST_PRESETS } from '@/lib/allowlist'
 import { useLocale } from '@/lib/i18n'
 import type { ContextBroTemplate, Endpoint, SiteRule } from '@/lib/types'
@@ -58,12 +59,12 @@ export function SiteRuleEditor({
 	onNavigateToTab,
 }: Props) {
 	const { t } = useLocale()
-	const [newPattern, setNewPattern] = useState('')
+	const [newName, setNewName] = useState('')
 
-	function addRule(pattern: string) {
-		const trimmed = pattern.trim().toLowerCase()
+	function addRule(name: string) {
+		const trimmed = name.trim()
 		if (!trimmed) return
-		if (siteRules.some((r) => r.pattern === trimmed)) return
+		if (siteRules.some((r) => r.name.toLowerCase() === trimmed.toLowerCase())) return
 
 		const enabledEndpointIds = endpoints.filter((e) => e.enabled).map((e) => e.id)
 		const newId = crypto.randomUUID()
@@ -72,7 +73,8 @@ export function SiteRuleEditor({
 			...siteRules,
 			{
 				id: newId,
-				pattern: trimmed,
+				name: trimmed,
+				patterns: [],
 				enabled: true,
 				endpointIds: enabledEndpointIds,
 				autoShare: false,
@@ -82,7 +84,7 @@ export function SiteRuleEditor({
 				dedupWindowSeconds: 900,
 			},
 		])
-		setNewPattern('')
+		setNewName('')
 
 		requestAnimationFrame(() => {
 			document
@@ -106,7 +108,8 @@ export function SiteRuleEditor({
 			{
 				...rule,
 				id: newId,
-				pattern: `${rule.pattern} (copy)`,
+				name: `${rule.name} (copy)`,
+				patterns: [...rule.patterns],
 			},
 		])
 
@@ -130,26 +133,33 @@ export function SiteRuleEditor({
 		const preset = ALLOWLIST_PRESETS[key]
 		if (!preset) return
 
-		const existing = new Set(siteRules.map((r) => r.pattern))
+		// Check if a rule with this preset name already exists
+		if (siteRules.some((r) => r.name.toLowerCase() === preset.label.toLowerCase())) return
+
 		const enabledEndpointIds = endpoints.filter((e) => e.enabled).map((e) => e.id)
 
-		const newRules: SiteRule[] = preset.patterns
-			.filter((p) => !existing.has(p))
-			.map((pattern) => ({
-				id: crypto.randomUUID(),
-				pattern,
-				enabled: true,
-				endpointIds: enabledEndpointIds,
-				autoShare: false,
-				intervalMinutes: 15,
-				scheduleMode: 'focused' as const,
-				dedupEnabled: true,
-				dedupWindowSeconds: 900,
-			}))
-
-		if (newRules.length > 0) {
-			onRulesChange([...siteRules, ...newRules])
+		const newRule: SiteRule = {
+			id: crypto.randomUUID(),
+			name: preset.label,
+			patterns: [...preset.patterns],
+			enabled: true,
+			endpointIds: enabledEndpointIds,
+			autoShare: false,
+			intervalMinutes: 15,
+			scheduleMode: 'focused',
+			dedupEnabled: true,
+			dedupWindowSeconds: 900,
 		}
+
+		onRulesChange([...siteRules, newRule])
+	}
+
+	function updatePatterns(ruleId: string, text: string) {
+		const patterns = text
+			.split('\n')
+			.map((line) => line.trim().toLowerCase())
+			.filter(Boolean)
+		updateRule(ruleId, { patterns })
 	}
 
 	const enabledEndpoints = endpoints.filter((e) => e.enabled)
@@ -178,20 +188,18 @@ export function SiteRuleEditor({
 						className={`p-5 transition-opacity ${!rule.enabled ? 'opacity-50' : ''}`}
 					>
 						<div className="space-y-3">
-							{/* Row 1: Enable + Pattern (editable) + Clone + Remove */}
+							{/* Row 1: Enable + Name + Clone + Remove */}
 							<div className="flex items-center gap-3">
 								<Switch
 									checked={rule.enabled}
 									onCheckedChange={(checked) => updateRule(rule.id, { enabled: checked })}
 								/>
 								<Input
-									value={rule.pattern}
-									onChange={(e) => updateRule(rule.id, { pattern: e.target.value.toLowerCase() })}
-									onBlur={(e) =>
-										updateRule(rule.id, { pattern: e.target.value.trim().toLowerCase() })
-									}
-									className="flex-1 text-sm font-mono h-8"
-									placeholder={t('sites.patternPlaceholder')}
+									value={rule.name}
+									onChange={(e) => updateRule(rule.id, { name: e.target.value })}
+									onBlur={(e) => updateRule(rule.id, { name: e.target.value.trim() })}
+									className="flex-1 text-sm font-medium h-8"
+									placeholder={t('sites.namePlaceholder')}
 								/>
 								<Button
 									variant="ghost"
@@ -212,7 +220,21 @@ export function SiteRuleEditor({
 								</Button>
 							</div>
 
-							{/* Row 2: Template + Endpoints */}
+							{/* Row 2: Patterns textarea */}
+							<div className="space-y-1">
+								<Label className="text-xs text-muted-foreground">
+									{t('sites.patterns')}
+								</Label>
+								<Textarea
+									value={rule.patterns.join('\n')}
+									onChange={(e) => updatePatterns(rule.id, e.target.value)}
+									className="font-mono text-xs min-h-[60px] resize-y"
+									placeholder={t('sites.patternsPlaceholder')}
+									rows={Math.max(2, rule.patterns.length + 1)}
+								/>
+							</div>
+
+							{/* Row 3: Template + Endpoints */}
 							<div className="grid grid-cols-2 gap-3">
 								<div className="space-y-1">
 									<Label className="text-xs text-muted-foreground">{t('sites.template')}</Label>
@@ -281,7 +303,7 @@ export function SiteRuleEditor({
 								</div>
 							</div>
 
-							{/* Row 3: Auto-capture + Schedule mode + Interval + Dedup */}
+							{/* Row 4: Auto-capture + Schedule mode + Interval + Dedup */}
 							<div className="flex flex-wrap items-center gap-3 pt-1 border-t border-border/50">
 								<div className="flex items-center gap-2">
 									<Switch
@@ -420,13 +442,13 @@ export function SiteRuleEditor({
 			<div className="sticky bottom-0 z-10 -mx-1 rounded-lg border bg-background/80 p-3 backdrop-blur-sm">
 				<div className="flex gap-2">
 					<Input
-						value={newPattern}
-						onChange={(e) => setNewPattern(e.target.value)}
-						onKeyDown={(e) => e.key === 'Enter' && addRule(newPattern)}
-						placeholder={t('sites.patternPlaceholder')}
-						className="flex-1 font-mono text-sm"
+						value={newName}
+						onChange={(e) => setNewName(e.target.value)}
+						onKeyDown={(e) => e.key === 'Enter' && addRule(newName)}
+						placeholder={t('sites.namePlaceholder')}
+						className="flex-1 text-sm"
 					/>
-					<Button onClick={() => addRule(newPattern)} disabled={!newPattern.trim()}>
+					<Button onClick={() => addRule(newName)} disabled={!newName.trim()}>
 						<Plus className="h-4 w-4" />
 						{t('sites.add')}
 					</Button>

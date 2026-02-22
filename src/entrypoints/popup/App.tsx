@@ -26,7 +26,7 @@ export default function App() {
 	const [selectedEndpoint, setSelectedEndpoint] = useState('')
 	const [selectedTemplate, setSelectedTemplate] = useState('default')
 	const [pageInfo, setPageInfo] = useState<PageInfo | null>(null)
-	const [matchedPattern, setMatchedPattern] = useState<string | null>(null)
+	const [matchedRules, setMatchedRules] = useState<SiteRule[]>([])
 	const [preview, setPreview] = useState('')
 	const [previewError, setPreviewError] = useState('')
 	const [previewLoading, setPreviewLoading] = useState(true)
@@ -95,13 +95,16 @@ export default function App() {
 				domain: tab.url ? new URL(tab.url).hostname : '',
 			})
 
-			// Auto-detect matching site rule
-			const matched = tab.url ? matchesSiteRules(tab.url, rules) : null
-			if (matched) {
-				setMatchedPattern(matched.pattern)
-				if (matched.templateId) setSelectedTemplate(matched.templateId)
-				if (matched.endpointIds.length > 0) {
-					const firstEndpoint = eps.find((e) => e.enabled && matched.endpointIds.includes(e.id))
+			// Auto-detect matching site rules
+			const matched = tab.url ? matchesSiteRules(tab.url, rules) : []
+			setMatchedRules(matched)
+			if (matched.length > 0) {
+				const first = matched[0]
+				if (first.templateId) setSelectedTemplate(first.templateId)
+				if (first.endpointIds.length > 0) {
+					const firstEndpoint = eps.find(
+						(e) => e.enabled && first.endpointIds.includes(e.id),
+					)
 					if (firstEndpoint) setSelectedEndpoint(firstEndpoint.id)
 				} else {
 					const firstEnabled = eps.find((e) => e.enabled)
@@ -210,11 +213,11 @@ export default function App() {
 							>
 								{pageInfo.title || 'Untitled'}
 							</p>
-							{matchedPattern && (
-								<Badge variant="secondary" className="text-[10px] shrink-0">
-									{matchedPattern}
+							{matchedRules.map((r) => (
+								<Badge key={r.id} variant="secondary" className="text-[10px] shrink-0">
+									{r.name}
 								</Badge>
-							)}
+							))}
 						</div>
 						<p className="truncate text-xs text-muted-foreground" title={pageInfo.url}>
 							{pageInfo.domain}

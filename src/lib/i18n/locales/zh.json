@@ -8,8 +8,10 @@
 
 	"sites.description": "配置要分享的网站及分享方式。",
 	"sites.add": "添加",
-	"sites.pattern": "域名匹配",
-	"sites.patternPlaceholder": "github.com 或 *.reddit.com",
+	"sites.name": "名称",
+	"sites.namePlaceholder": "例如 SNS、开发、新闻",
+	"sites.patterns": "域名匹配",
+	"sites.patternsPlaceholder": "每行一个匹配模式\ngithub.com\n*.reddit.com",
 	"sites.template": "模板",
 	"sites.endpoints": "接口",
 	"sites.autoCapture": "自动捕获",

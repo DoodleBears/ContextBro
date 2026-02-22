@@ -8,8 +8,10 @@
 
 	"sites.description": "Configure which websites to share and how.",
 	"sites.add": "Add",
-	"sites.pattern": "Domain pattern",
-	"sites.patternPlaceholder": "github.com or *.reddit.com",
+	"sites.name": "Name",
+	"sites.namePlaceholder": "e.g. SNS, Dev, News",
+	"sites.patterns": "Patterns",
+	"sites.patternsPlaceholder": "One pattern per line\ngithub.com\n*.reddit.com",
 	"sites.template": "Template",
 	"sites.endpoints": "Endpoints",
 	"sites.autoCapture": "Auto-capture",

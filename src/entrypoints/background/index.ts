@@ -3,7 +3,7 @@ import { matchesSiteRules } from '@/lib/allowlist'
 import { sendToEndpoint } from '@/lib/api/send'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
 import { initFocusedMode } from '@/lib/focused-mode'
-import { migrateV1ToV2, migrateV2ToV3, migrateV3ToV4 } from '@/lib/migration'
+import { migrateV1ToV2, migrateV2ToV3, migrateV3ToV4, migrateV4ToV5 } from '@/lib/migration'
 import { initScheduler, updateGlobalSettings, updateSiteRules } from '@/lib/scheduler'
 import {
 	appendSendHistory,
@@ -44,6 +44,10 @@ export default defineBackground(() => {
 		})
 		.then((migrated) => {
 			if (migrated) console.debug('[background] V3→V4 migration completed')
+			return migrateV4ToV5()
+		})
+		.then((migrated) => {
+			if (migrated) console.debug('[background] V4→V5 migration completed')
 		})
 
 	// Initialize the scheduled extraction system
@@ -158,7 +162,8 @@ async function shareFromTab(tabId: number): Promise<void> {
 
 		// Try matching a site rule for multi-endpoint
 		const siteRules = await getSiteRules()
-		const matchedRule = url ? matchesSiteRules(url, siteRules) : null
+		const matchedRules = url ? matchesSiteRules(url, siteRules) : []
+		const matchedRule = matchedRules[0]
 
 		if (matchedRule && matchedRule.endpointIds.length > 0) {
 			const targetEndpoints = endpoints.filter(

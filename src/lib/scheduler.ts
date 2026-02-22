@@ -95,7 +95,7 @@ async function runScheduledExtraction(deps: {
 
 	for (const rule of activeRules) {
 		// Check per-rule interval
-		const lastTime = lastSharedAt[rule.pattern] || 0
+		const lastTime = lastSharedAt[rule.id] || 0
 		if (now - lastTime < rule.intervalMinutes * 60_000) continue
 
 		const candidateTabs = allTabs
@@ -107,7 +107,7 @@ async function runScheduledExtraction(deps: {
 				: allEndpoints.filter((e) => e.enabled).slice(0, 1)
 
 		if (targetEndpoints.length === 0) {
-			console.debug(`[scheduler] No endpoints for rule: ${rule.pattern}`)
+			console.debug(`[scheduler] No endpoints for rule: ${rule.name}`)
 			continue
 		}
 
@@ -122,10 +122,10 @@ async function runScheduledExtraction(deps: {
 			} catch {
 				continue
 			}
-			if (!matchesPattern(hostname, rule.pattern)) continue
+			if (!rule.patterns.some((p) => matchesPattern(hostname, p))) continue
 
 			// Avoid processing the same rule+tab combo
-			const comboKey = `${rule.pattern}::${tab.id}`
+			const comboKey = `${rule.id}::${tab.id}`
 			if (processedTabs.has(comboKey)) continue
 			processedTabs.add(comboKey)
 
@@ -174,7 +174,7 @@ async function runScheduledExtraction(deps: {
 						timestamp: now,
 						url: tab.url,
 						endpointName: targetEndpoints[i].name,
-						rulePattern: rule.pattern,
+						ruleName: rule.name,
 						trigger: 'scheduler',
 						ok,
 						status,
@@ -185,7 +185,7 @@ async function runScheduledExtraction(deps: {
 				// Mark as shared if at least one endpoint succeeded
 				const anySuccess = results.some((r) => r.status === 'fulfilled' && r.value.ok)
 				if (anySuccess) {
-					lastSharedAt[rule.pattern] = now
+					lastSharedAt[rule.id] = now
 					lastSharedUpdated = true
 				}
 			} catch (error) {

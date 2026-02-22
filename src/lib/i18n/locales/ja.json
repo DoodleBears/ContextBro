@@ -8,8 +8,10 @@
 
 	"sites.description": "共有するウェブサイトとその方法を設定します。",
 	"sites.add": "追加",
-	"sites.pattern": "ドメインパターン",
-	"sites.patternPlaceholder": "github.com または *.reddit.com",
+	"sites.name": "名前",
+	"sites.namePlaceholder": "例: SNS、開発、ニュース",
+	"sites.patterns": "パターン",
+	"sites.patternsPlaceholder": "1行に1パターン\ngithub.com\n*.reddit.com",
 	"sites.template": "テンプレート",
 	"sites.endpoints": "エンドポイント",
 	"sites.autoCapture": "自動キャプチャ",
