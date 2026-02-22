@@ -17,13 +17,13 @@ const DEFAULT_TEMPLATE: ContextBroTemplate = {
 	id: 'default',
 	name: 'Default',
 	contentFormat: `{
-  "title": "{{title}}",
-  "url": "{{url}}",
-  "content": "{{content}}",
-  "author": "{{author}}",
-  "published": "{{published}}",
-  "domain": "{{domain}}",
-  "description": "{{description}}",
+  "title": {{title|json_stringify}},
+  "url": {{url|json_stringify}},
+  "content": {{content|json_stringify}},
+  "author": {{author|json_stringify}},
+  "published": {{published|json_stringify}},
+  "domain": {{domain|json_stringify}},
+  "description": {{description|json_stringify}},
   "wordCount": {{wordCount}},
   "clippedAt": "{{date}} {{time}}"
 }`,
@@ -291,9 +291,7 @@ async function handleShare(tabId: number, endpointId?: string, templateId?: stri
 
 		if (!endpoint) return { ok: false, error: 'No endpoint configured' }
 
-		console.debug('[handleShare] compiled length:', compiled.length, 'preview:', compiled.slice(0, 200))
 		const result = await sendToEndpoint(endpoint, compiled)
-		console.debug('[handleShare] send result:', result.ok, result.status, result.statusText)
 
 		await appendSendHistory({
 			id: crypto.randomUUID(),

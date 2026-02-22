@@ -16,6 +16,7 @@ import { fragment_link } from './fragment_link'
 import { html_to_json } from './html_to_json'
 import { image } from './image'
 import { join } from './join'
+import { json_stringify } from './json_stringify'
 import { kebab } from './kebab'
 import { last } from './last'
 import { length } from './length'
@@ -92,6 +93,7 @@ export const filterMetadata: Record<string, FilterMetadata> = {
 	html_to_json: {},
 	image: {},
 	join: { example: 'join:", "' },
+	json_stringify: {},
 	kebab: {},
 	last: {},
 	length: {},
@@ -145,6 +147,7 @@ export const filters: { [key: string]: FilterFunction } = {
 	html_to_json,
 	image,
 	join,
+	json_stringify,
 	kebab,
 	last,
 	length,
