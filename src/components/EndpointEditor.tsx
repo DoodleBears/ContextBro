@@ -103,24 +103,23 @@ export function EndpointEditor({ endpoints, onChange }: Props) {
 		}
 	}
 
-	const isOpen = (id: string) => editingId === id
+	function toggleEditing(id: string) {
+		setEditingId(editingId === id ? null : id)
+	}
 
 	return (
 		<div className="space-y-3">
 			{endpoints.map((ep) => {
-				const open = isOpen(ep.id)
+				const open = editingId === ep.id
 				return (
-					<Card
-						key={ep.id}
-						id={`endpoint-${ep.id}`}
-						className={`overflow-hidden transition-colors ${
-							open ? 'p-5' : 'p-4 cursor-pointer hover:bg-accent/50'
-						}`}
-						onClick={open ? undefined : () => setEditingId(ep.id)}
-					>
-						{/* Header row */}
-						<div className={`flex items-center gap-3 ${open ? '' : ''}`}>
-							{/* biome-ignore lint: stop card click propagation */}
+					<Card key={ep.id} id={`endpoint-${ep.id}`} className="overflow-hidden">
+						{/* biome-ignore lint: header row acts as toggle with embedded interactive children */}
+						<div
+							className="flex items-center gap-3 p-4 cursor-pointer transition-colors hover:bg-accent/50"
+							onClick={() => toggleEditing(ep.id)}
+							onKeyDown={(e) => e.key === 'Enter' && toggleEditing(ep.id)}
+						>
+							{/* biome-ignore lint: stop header click propagation */}
 							<div onClick={(e) => e.stopPropagation()}>
 								<Switch
 									checked={ep.enabled}
@@ -135,6 +134,7 @@ export function EndpointEditor({ endpoints, onChange }: Props) {
 										onChange={(e) => updateEndpoint(ep.id, { name: e.target.value })}
 										placeholder={t('endpoints.name')}
 										className="h-8 w-64 text-sm"
+										onClick={(e) => e.stopPropagation()}
 									/>
 								) : (
 									<div className="flex items-center gap-3 min-w-0">
@@ -150,8 +150,11 @@ export function EndpointEditor({ endpoints, onChange }: Props) {
 								)}
 							</div>
 
-							{/* biome-ignore lint: stop card click propagation */}
-							<div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+							{/* biome-ignore lint: stop header click propagation */}
+							<div
+								className="flex items-center gap-1 shrink-0"
+								onClick={(e) => e.stopPropagation()}
+							>
 								<Button
 									variant="ghost"
 									size="icon"
@@ -180,7 +183,8 @@ export function EndpointEditor({ endpoints, onChange }: Props) {
 
 						{/* Expanded edit form */}
 						{open && (
-							<div className="mt-4 pt-4 border-t border-border/50 space-y-4">
+							<div className="px-5 pb-5 space-y-4">
+								<div className="border-t border-border/50" />
 								<div>
 									<Label className="text-xs text-muted-foreground">{t('endpoints.url')}</Label>
 									<Input
@@ -245,14 +249,6 @@ export function EndpointEditor({ endpoints, onChange }: Props) {
 									{testStatus[ep.id] && (
 										<span className="text-xs text-muted-foreground">{testStatus[ep.id]}</span>
 									)}
-									<Button
-										variant="ghost"
-										size="sm"
-										className="ml-auto"
-										onClick={() => setEditingId(null)}
-									>
-										{t('common.done')}
-									</Button>
 								</div>
 							</div>
 						)}

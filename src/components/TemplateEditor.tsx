@@ -86,23 +86,22 @@ export function TemplateEditor({ templates, onChange }: Props) {
 		if (editingId === id) setEditingId(null)
 	}
 
-	const isOpen = (id: string) => editingId === id
+	function toggleEditing(id: string) {
+		setEditingId(editingId === id ? null : id)
+	}
 
 	return (
 		<div className="space-y-3">
 			{templates.map((tmpl) => {
-				const open = isOpen(tmpl.id)
+				const open = editingId === tmpl.id
 				return (
-					<Card
-						key={tmpl.id}
-						id={`template-${tmpl.id}`}
-						className={`overflow-hidden transition-colors ${
-							open ? 'p-5' : 'p-4 cursor-pointer hover:bg-accent/50'
-						}`}
-						onClick={open ? undefined : () => setEditingId(tmpl.id)}
-					>
-						{/* Header row */}
-						<div className="flex items-center gap-3">
+					<Card key={tmpl.id} id={`template-${tmpl.id}`} className="overflow-hidden">
+						{/* biome-ignore lint: header row acts as toggle with embedded interactive children */}
+						<div
+							className="flex items-center gap-3 p-4 cursor-pointer transition-colors hover:bg-accent/50"
+							onClick={() => toggleEditing(tmpl.id)}
+							onKeyDown={(e) => e.key === 'Enter' && toggleEditing(tmpl.id)}
+						>
 							<div className="flex-1 min-w-0">
 								{open ? (
 									<Input
@@ -110,6 +109,7 @@ export function TemplateEditor({ templates, onChange }: Props) {
 										onChange={(e) => updateTemplate(tmpl.id, { name: e.target.value })}
 										placeholder={t('templates.name')}
 										className="h-8 w-64 text-sm"
+										onClick={(e) => e.stopPropagation()}
 									/>
 								) : (
 									<span className="text-sm font-medium truncate block">
@@ -118,8 +118,11 @@ export function TemplateEditor({ templates, onChange }: Props) {
 								)}
 							</div>
 
-							{/* biome-ignore lint: stop card click propagation */}
-							<div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+							{/* biome-ignore lint: stop header click propagation */}
+							<div
+								className="flex items-center gap-1 shrink-0"
+								onClick={(e) => e.stopPropagation()}
+							>
 								<Button
 									variant="ghost"
 									size="icon"
@@ -148,7 +151,8 @@ export function TemplateEditor({ templates, onChange }: Props) {
 
 						{/* Expanded edit form */}
 						{open && (
-							<div className="mt-4 pt-4 border-t border-border/50 space-y-4">
+							<div className="px-5 pb-5 space-y-4">
+								<div className="border-t border-border/50" />
 								<div>
 									<Label className="text-xs text-muted-foreground">
 										{t('templates.triggers')}
@@ -191,10 +195,6 @@ export function TemplateEditor({ templates, onChange }: Props) {
 										{'{{contentHtml}}'} {'{{selectionHtml}}'}
 									</p>
 								</div>
-
-								<Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>
-									{t('common.done')}
-								</Button>
 							</div>
 						)}
 					</Card>
