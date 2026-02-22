@@ -33,6 +33,8 @@ export class TwitchAdapter extends BaseAdapter {
 	}
 
 	protected async attach(): Promise<void> {
+		if (!this.config.twitch.chat) return
+
 		this.channelName = this.extractChannelName()
 		this.streamInfo = this.buildStreamInfo()
 

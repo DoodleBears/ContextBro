@@ -1,10 +1,16 @@
 import { TwitchAdapter } from '@/lib/adapters/twitch'
 import type { ChatBatch } from '@/lib/adapters/types'
+import type { LiveStreamConfig } from '@/lib/types'
 
 export default defineContentScript({
 	matches: ['*://*.twitch.tv/*'],
 	runAt: 'document_idle',
 	async main() {
+		// Early exit if Twitch adapter is disabled
+		const stored = await browser.storage.local.get('liveStreamConfig')
+		const config = stored.liveStreamConfig as LiveStreamConfig | undefined
+		if (config && !config.twitch.enabled) return
+
 		const adapter = new TwitchAdapter()
 		const url = new URL(window.location.href)
 

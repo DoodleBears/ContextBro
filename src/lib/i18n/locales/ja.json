@@ -5,6 +5,7 @@
 	"tabs.endpoints": "エンドポイント",
 	"tabs.templates": "テンプレート",
 	"tabs.general": "一般",
+	"tabs.livestream": "ライブ配信",
 
 	"sites.description": "共有するウェブサイトとその方法を設定します。",
 	"sites.add": "追加",
@@ -94,5 +95,28 @@
 	"general.theme": "テーマ",
 	"general.themeSystem": "システム",
 	"general.themeLight": "ライト",
-	"general.themeDark": "ダーク"
+	"general.themeDark": "ダーク",
+
+	"livestream.description": "ライブ配信チャットと字幕のキャプチャ・送信方法を設定します。",
+	"livestream.youtube": "YouTube",
+	"livestream.twitch": "Twitch",
+	"livestream.chat": "チャット",
+	"livestream.transcript": "字幕",
+	"livestream.flush": "送信戦略",
+	"livestream.flushDesc": "キャプチャしたメッセージをエンドポイントに送信するタイミングを制御します。",
+	"livestream.debounce": "デバウンス遅延",
+	"livestream.debounceHint": "最後のメッセージからこの時間後に送信します。",
+	"livestream.maxWait": "最大待機",
+	"livestream.maxWaitHint": "メッセージが続いてもこの時間後に強制送信します。",
+	"livestream.sampling": "サンプリング",
+	"livestream.samplingHint": "この閾値以下のメッセージはサンプリングなしで全て送信されます。",
+	"livestream.maxMessages": "バッチあたり最大メッセージ数",
+	"livestream.dedup": "スパム重複排除",
+	"livestream.dedupWindow": "重複排除ウィンドウ",
+	"livestream.aggregateSpam": "スパム集約",
+	"livestream.aggregateSpamHint": "重複を削除する代わりに「メッセージ ×5」と表示します。",
+	"livestream.transcriptSection": "字幕トラッキング",
+	"livestream.transcriptHint": "プログレッシブ追跡：動画の再生に合わせて新しいセグメントのみ送信します。",
+	"livestream.pollInterval": "ポーリング間隔",
+	"livestream.progressThreshold": "進行閾値"
 }

@@ -1,4 +1,4 @@
-.PHONY: dev dev-docs deploy-docs zip zip-chrome zip-firefox build check typecheck help
+.PHONY: dev dev-docs deploy-docs publish zip zip-chrome zip-firefox build check typecheck help
 
 # ============================================================================
 # Development
@@ -26,6 +26,9 @@ zip-chrome: ## Package for Chrome only
 
 zip-firefox: ## Package for Firefox only
 	pnpm run zip:firefox
+
+publish: ## Build, zip, and upload extension to R2
+	pnpm run publish
 
 deploy-docs: ## Build and deploy docs to Cloudflare Pages
 	pnpm --filter @context-bro/docs build

@@ -5,6 +5,7 @@
 	"tabs.endpoints": "接口",
 	"tabs.templates": "模板",
 	"tabs.general": "通用",
+	"tabs.livestream": "直播",
 
 	"sites.description": "配置要分享的网站及分享方式。",
 	"sites.add": "添加",
@@ -94,5 +95,28 @@
 	"general.theme": "主题",
 	"general.themeSystem": "跟随系统",
 	"general.themeLight": "浅色",
-	"general.themeDark": "深色"
+	"general.themeDark": "深色",
+
+	"livestream.description": "配置直播聊天和字幕的捕获与发送方式。",
+	"livestream.youtube": "YouTube",
+	"livestream.twitch": "Twitch",
+	"livestream.chat": "聊天",
+	"livestream.transcript": "字幕",
+	"livestream.flush": "发送策略",
+	"livestream.flushDesc": "控制捕获的消息何时发送到接口。",
+	"livestream.debounce": "防抖延迟",
+	"livestream.debounceHint": "最后一条消息后等待此时间再发送。",
+	"livestream.maxWait": "最大等待",
+	"livestream.maxWaitHint": "即使消息持续涌入，也在此时间后强制发送。",
+	"livestream.sampling": "采样",
+	"livestream.samplingHint": "低于此阈值的消息将全部发送，不进行采样。",
+	"livestream.maxMessages": "每批最大消息数",
+	"livestream.dedup": "刷屏去重",
+	"livestream.dedupWindow": "去重窗口",
+	"livestream.aggregateSpam": "聚合刷屏",
+	"livestream.aggregateSpamHint": "显示「消息 ×5」而非丢弃重复消息。",
+	"livestream.transcriptSection": "字幕追踪",
+	"livestream.transcriptHint": "渐进式追踪，仅随播放进度发送新的字幕片段。",
+	"livestream.pollInterval": "轮询间隔",
+	"livestream.progressThreshold": "进度阈值"
 }

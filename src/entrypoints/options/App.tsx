@@ -1,19 +1,27 @@
 import '@/assets/tailwind.css'
 
-import { BookOpen, Crosshair, ExternalLink, Globe, Keyboard, Workflow } from 'lucide-react'
+import { BookOpen, Crosshair, ExternalLink, Globe, Keyboard, Radio, Workflow } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import logoDark from '@/assets/logo-dark.svg'
 import logoLight from '@/assets/logo-light.svg'
 import { EndpointEditor } from '@/components/EndpointEditor'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { LiveStreamEditor } from '@/components/LiveStreamEditor'
 import { SendHistoryPanel } from '@/components/SendHistoryPanel'
 import { SiteRuleEditor } from '@/components/SiteRuleEditor'
 import { TemplateEditor } from '@/components/TemplateEditor'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useLocale } from '@/lib/i18n'
+import { DEFAULT_LIVE_STREAM_CONFIG } from '@/lib/storage'
 import { applyTheme, type Theme, watchSystemTheme } from '@/lib/theme'
-import type { ContextBroTemplate, Endpoint, GlobalSettings, SiteRule } from '@/lib/types'
+import type {
+	ContextBroTemplate,
+	Endpoint,
+	GlobalSettings,
+	LiveStreamConfig,
+	SiteRule,
+} from '@/lib/types'
 
 const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
 	locale: 'en',
@@ -26,6 +34,9 @@ export default function App() {
 	const [endpoints, setEndpoints] = useState<Endpoint[]>([])
 	const [templates, setTemplates] = useState<ContextBroTemplate[]>([])
 	const [globalSettings, setGlobalSettings] = useState<GlobalSettings>(DEFAULT_GLOBAL_SETTINGS)
+	const [liveStreamConfig, setLiveStreamConfig] = useState<LiveStreamConfig>(
+		DEFAULT_LIVE_STREAM_CONFIG,
+	)
 	const [activeTab, setActiveTab] = useState('sites')
 
 	// Auto-save: skip saving until initial load completes
@@ -38,11 +49,13 @@ export default function App() {
 			'endpoints',
 			'templates',
 			'globalSettings',
+			'liveStreamConfig',
 		])
 		setSiteRules((result.siteRules as SiteRule[]) || [])
 		setEndpoints((result.endpoints as Endpoint[]) || [])
 		setTemplates((result.templates as ContextBroTemplate[]) || [])
 		setGlobalSettings((result.globalSettings as GlobalSettings) || DEFAULT_GLOBAL_SETTINGS)
+		setLiveStreamConfig((result.liveStreamConfig as LiveStreamConfig) || DEFAULT_LIVE_STREAM_CONFIG)
 		// Mark loaded after a tick so the auto-save effect doesn't fire for the initial set
 		requestAnimationFrame(() => {
 			loaded.current = true
@@ -59,7 +72,13 @@ export default function App() {
 
 		if (saveTimer.current) clearTimeout(saveTimer.current)
 		saveTimer.current = setTimeout(async () => {
-			await browser.storage.local.set({ siteRules, endpoints, templates, globalSettings })
+			await browser.storage.local.set({
+				siteRules,
+				endpoints,
+				templates,
+				globalSettings,
+				liveStreamConfig,
+			})
 			browser.runtime.sendMessage({ action: 'updateSiteRules', siteRules })
 			browser.runtime.sendMessage({ action: 'updateGlobalSettings', globalSettings })
 		}, 500)
@@ -67,7 +86,7 @@ export default function App() {
 		return () => {
 			if (saveTimer.current) clearTimeout(saveTimer.current)
 		}
-	}, [siteRules, endpoints, templates, globalSettings])
+	}, [siteRules, endpoints, templates, globalSettings, liveStreamConfig])
 
 	// Apply theme and watch for system changes; inform background of resolved theme
 	useEffect(() => {
@@ -125,6 +144,10 @@ export default function App() {
 							<Workflow className="h-3.5 w-3.5 mr-1.5" />
 							{t('tabs.templates')}
 						</TabsTrigger>
+						<TabsTrigger value="livestream">
+							<Radio className="h-3.5 w-3.5 mr-1.5" />
+							{t('tabs.livestream')}
+						</TabsTrigger>
 						<TabsTrigger value="general">{t('tabs.general')}</TabsTrigger>
 					</TabsList>
 					<a
@@ -158,6 +181,11 @@ export default function App() {
 				<TabsContent value="templates">
 					<p className="mb-5 text-sm text-muted-foreground">{t('templates.description')}</p>
 					<TemplateEditor templates={templates} onChange={setTemplates} />
+				</TabsContent>
+
+				<TabsContent value="livestream">
+					<p className="mb-5 text-sm text-muted-foreground">{t('livestream.description')}</p>
+					<LiveStreamEditor config={liveStreamConfig} onChange={setLiveStreamConfig} />
 				</TabsContent>
 
 				<TabsContent value="general">

@@ -1,3 +1,4 @@
+import { DEFAULT_LIVE_STREAM_CONFIG } from '@/lib/storage'
 import type { Endpoint, GlobalSettings, ScheduleConfig } from '@/lib/types'
 
 /**
@@ -213,5 +214,20 @@ export async function migrateV6ToV7(): Promise<boolean> {
 
 	await browser.storage.local.set({ siteRules: updatedRules })
 	console.debug(`[migration] V6→V7: added dwellSeconds to ${updatedRules.length} rules`)
+	return true
+}
+
+/**
+ * Migrate from v7 to v8:
+ * - Add `liveStreamConfig` to storage with defaults
+ * Idempotent — skips if liveStreamConfig already exists.
+ */
+export async function migrateV7ToV8(): Promise<boolean> {
+	const result = await browser.storage.local.get(['liveStreamConfig'])
+
+	if (result.liveStreamConfig !== undefined) return false
+
+	await browser.storage.local.set({ liveStreamConfig: DEFAULT_LIVE_STREAM_CONFIG })
+	console.debug('[migration] V7→V8: added liveStreamConfig defaults')
 	return true
 }

@@ -1,10 +1,16 @@
 import type { ChatBatch, TranscriptChunk } from '@/lib/adapters/types'
 import { YouTubeAdapter } from '@/lib/adapters/youtube'
+import type { LiveStreamConfig } from '@/lib/types'
 
 export default defineContentScript({
 	matches: ['*://*.youtube.com/watch*', '*://*.youtube.com/live*'],
 	runAt: 'document_idle',
 	async main() {
+		// Early exit if YouTube adapter is disabled
+		const stored = await browser.storage.local.get('liveStreamConfig')
+		const config = stored.liveStreamConfig as LiveStreamConfig | undefined
+		if (config && !config.youtube.enabled) return
+
 		const adapter = new YouTubeAdapter()
 		const url = new URL(window.location.href)
 

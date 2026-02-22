@@ -23,6 +23,7 @@ export class YouTubeAdapter extends BaseAdapter {
 	private transcriptCallbacks: ((chunk: TranscriptChunk) => void)[] = []
 	private transcriptTimer: ReturnType<typeof setInterval> | null = null
 	private lastTranscriptTime = 0
+	private sentSegments = new Set<number>()
 	private isLive = false
 
 	match(url: URL): boolean {
@@ -44,16 +45,18 @@ export class YouTubeAdapter extends BaseAdapter {
 		this.streamInfo = this.buildStreamInfo()
 		this.isLive = this.detectLive()
 
-		if (this.isLive) {
-			await super.init()
-		}
+		// super.init() loads config → starts flusher → calls attach()
+		// attach() checks isLive + config.youtube.chat before waiting for chat container
+		await super.init()
 
-		// VOD transcript tracking
-		this.startTranscriptTracking()
+		if (this.config.youtube.transcript) {
+			this.startTranscriptTracking()
+		}
 	}
 
 	destroy(): void {
 		super.destroy()
+		this.sentSegments.clear()
 		if (this.transcriptTimer) {
 			clearInterval(this.transcriptTimer)
 			this.transcriptTimer = null
@@ -61,6 +64,9 @@ export class YouTubeAdapter extends BaseAdapter {
 	}
 
 	protected async attach(): Promise<void> {
+		// Only observe chat on live streams with chat enabled
+		if (!this.isLive || !this.config.youtube.chat) return
+
 		// Live chat may be in an iframe
 		const target = await this.findChatContainer(15_000)
 		if (!target) {
@@ -314,12 +320,12 @@ export class YouTubeAdapter extends BaseAdapter {
 		}
 	}
 
-	// ── VOD Transcript tracking ──
+	// ── Progressive transcript tracking ──
 
 	private startTranscriptTracking(): void {
 		this.transcriptTimer = setInterval(() => {
 			this.checkTranscript()
-		}, 5_000)
+		}, this.config.transcript.pollIntervalMs)
 	}
 
 	private checkTranscript(): void {
@@ -329,28 +335,44 @@ export class YouTubeAdapter extends BaseAdapter {
 		const currentTime = video.currentTime
 		const duration = video.duration
 
-		// Only emit if time has progressed
-		if (currentTime <= this.lastTranscriptTime + 1) return
+		// Only emit if time has progressed past threshold
+		if (currentTime <= this.lastTranscriptTime + this.config.transcript.progressThresholdS) return
 		this.lastTranscriptTime = currentTime
 
 		// Try to get transcript segments
 		const segments = document.querySelectorAll('ytd-transcript-segment-renderer')
 		if (segments.length === 0) return
 
-		// Find segments near current time
-		const nearbyText: string[] = []
+		// Find segments near current time that haven't been sent yet
+		const newText: string[] = []
+		let segStartTime = 0
+		let segEndTime = 0
+
 		for (const seg of segments) {
 			const timeEl = seg.querySelector('.segment-timestamp')
 			const textEl = seg.querySelector('.segment-text')
 			if (!timeEl || !textEl) continue
 
 			const segTime = this.parseTimestamp(timeEl.textContent?.trim() || '')
-			if (segTime >= currentTime - 5 && segTime <= currentTime + 5) {
-				nearbyText.push(textEl.textContent?.trim() || '')
-			}
+			if (segTime < currentTime - 5 || segTime > currentTime + 5) continue
+
+			const roundedTime = Math.round(segTime)
+			if (this.sentSegments.has(roundedTime)) continue
+
+			this.sentSegments.add(roundedTime)
+			newText.push(textEl.textContent?.trim() || '')
+
+			if (!segStartTime || segTime < segStartTime) segStartTime = segTime
+			if (segTime > segEndTime) segEndTime = segTime
 		}
 
-		if (nearbyText.length === 0) return
+		// Safety prune: if set grows too large (very long video), trim older half
+		if (this.sentSegments.size > 50_000) {
+			const sorted = [...this.sentSegments].sort((a, b) => a - b)
+			this.sentSegments = new Set(sorted.slice(sorted.length / 2))
+		}
+
+		if (newText.length === 0) return
 
 		const videoId = new URL(window.location.href).searchParams.get('v') || ''
 
@@ -359,9 +381,9 @@ export class YouTubeAdapter extends BaseAdapter {
 			videoId,
 			title: this.streamInfo?.title || document.title,
 			channelName: this.streamInfo?.channelName || '',
-			text: nearbyText.join(' '),
-			startTime: currentTime - 5,
-			endTime: currentTime + 5,
+			text: newText.join(' '),
+			startTime: segStartTime,
+			endTime: segEndTime,
 			currentTime,
 			duration: Number.isFinite(duration) ? duration : undefined,
 		}

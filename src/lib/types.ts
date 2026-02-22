@@ -44,6 +44,27 @@ export interface GlobalSettings {
 	theme: 'system' | 'light' | 'dark'
 }
 
+export interface LiveStreamConfig {
+	youtube: { enabled: boolean; chat: boolean; transcript: boolean }
+	twitch: { enabled: boolean; chat: boolean }
+	flush: {
+		debounceMs: number
+		maxWaitMs: number
+	}
+	sampling: {
+		maxMessagesPerBatch: number
+	}
+	dedup: {
+		enabled: boolean
+		windowMs: number
+		aggregateSpam: boolean
+	}
+	transcript: {
+		pollIntervalMs: number
+		progressThresholdS: number
+	}
+}
+
 export interface SendHistoryEntry {
 	id: string
 	timestamp: number

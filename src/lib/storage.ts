@@ -2,6 +2,7 @@ import type {
 	ContextBroTemplate,
 	Endpoint,
 	GlobalSettings,
+	LiveStreamConfig,
 	SendHistoryEntry,
 	SiteRule,
 } from '@/lib/types'
@@ -9,6 +10,24 @@ import type {
 const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
 	locale: 'en',
 	theme: 'system',
+}
+
+export const DEFAULT_LIVE_STREAM_CONFIG: LiveStreamConfig = {
+	youtube: { enabled: true, chat: true, transcript: true },
+	twitch: { enabled: true, chat: true },
+	flush: { debounceMs: 3000, maxWaitMs: 15000 },
+	sampling: { maxMessagesPerBatch: 100 },
+	dedup: { enabled: true, windowMs: 10000, aggregateSpam: false },
+	transcript: { pollIntervalMs: 5000, progressThresholdS: 1 },
+}
+
+export async function getLiveStreamConfig(): Promise<LiveStreamConfig> {
+	const result = await browser.storage.local.get('liveStreamConfig')
+	return (result.liveStreamConfig as LiveStreamConfig) || DEFAULT_LIVE_STREAM_CONFIG
+}
+
+export async function setLiveStreamConfig(config: LiveStreamConfig): Promise<void> {
+	await browser.storage.local.set({ liveStreamConfig: config })
 }
 
 export async function getSiteRules(): Promise<SiteRule[]> {

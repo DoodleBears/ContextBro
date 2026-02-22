@@ -1,16 +1,17 @@
+import { DEFAULT_LIVE_STREAM_CONFIG } from '@/lib/storage'
+import type { LiveStreamConfig } from '@/lib/types'
+import { DebouncedFlusher } from './flusher'
 import type { ChatBatch, NormalizedChatMessage, PlatformAdapter, StreamInfo } from './types'
 
-const FLUSH_INTERVAL_MS = 30_000
-const DEDUP_WINDOW_MS = 10_000
-const MAX_MESSAGES_PER_BATCH = 100
 const PROCESS_TICK_MS = 20
 
 /**
  * Base adapter class providing common infrastructure:
  * - MutationObserver lifecycle (attach / disconnect / reconnect)
- * - Sliding window dedup (10s window, Map<string, number>)
- * - Chat batch aggregator (30s flush + priority sampling)
+ * - Sliding window dedup with optional spam aggregation
+ * - Debounce-based chat batch flusher with maxWait cap
  * - Delayed processing queue (20ms tick to avoid high-frequency blocking)
+ * - Live config updates via storage.onChanged
  */
 export abstract class BaseAdapter implements PlatformAdapter {
 	abstract platform: string
@@ -21,21 +22,27 @@ export abstract class BaseAdapter implements PlatformAdapter {
 	protected deletionObserver: MutationObserver | null = null
 	private batchCallbacks: ((batch: ChatBatch) => void)[] = []
 	private messageBuffer: NormalizedChatMessage[] = []
-	private flushTimer: ReturnType<typeof setInterval> | null = null
-	private dedupWindow = new Map<string, number>()
+	private flusher: DebouncedFlusher | null = null
+	private dedupWindow = new Map<string, { timestamp: number; bufferIndex: number }>()
 	private processQueue: (() => void)[] = []
 	private processTimer: ReturnType<typeof setTimeout> | null = null
 	private isProcessing = false
 
+	protected config: LiveStreamConfig = DEFAULT_LIVE_STREAM_CONFIG
+	private storageListener: ((changes: Record<string, { newValue?: unknown }>) => void) | null = null
+
 	// ── Lifecycle ──
 
 	async init(): Promise<void> {
+		await this.loadConfig()
+		this.listenForConfigChanges()
 		this.startFlushing()
 		await this.attach()
 	}
 
 	destroy(): void {
-		this.stopFlushing()
+		this.flusher?.destroy()
+		this.flusher = null
 		this.detachObservers()
 		this.processQueue = []
 		this.messageBuffer = []
@@ -44,10 +51,36 @@ export abstract class BaseAdapter implements PlatformAdapter {
 			clearTimeout(this.processTimer)
 			this.processTimer = null
 		}
+		if (this.storageListener) {
+			browser.storage.onChanged.removeListener(this.storageListener)
+			this.storageListener = null
+		}
 	}
 
 	onChatBatch(cb: (batch: ChatBatch) => void): void {
 		this.batchCallbacks.push(cb)
+	}
+
+	// ── Config ──
+
+	private async loadConfig(): Promise<void> {
+		const result = await browser.storage.local.get('liveStreamConfig')
+		if (result.liveStreamConfig) {
+			this.config = result.liveStreamConfig as LiveStreamConfig
+		}
+	}
+
+	private listenForConfigChanges(): void {
+		this.storageListener = (changes) => {
+			if (changes.liveStreamConfig?.newValue) {
+				this.config = changes.liveStreamConfig.newValue as LiveStreamConfig
+				this.flusher?.updateConfig(
+					this.config.flush.debounceMs,
+					this.config.flush.maxWaitMs,
+				)
+			}
+		}
+		browser.storage.onChanged.addListener(this.storageListener)
 	}
 
 	// ── Subclass hooks ──
@@ -140,55 +173,67 @@ export abstract class BaseAdapter implements PlatformAdapter {
 		}
 	}
 
-	// ── Message handling ──
+	// ── Message handling with dedup / spam aggregation ──
 
 	private handleNewNode(el: Element): void {
 		const msg = this.parseMessageNode(el)
 		if (!msg) return
-		if (this.isDuplicate(msg)) return
-		this.messageBuffer.push(msg)
-	}
 
-	// ── Sliding window dedup (10s) ──
+		if (this.config.dedup.enabled) {
+			const key = `${msg.platform}-${msg.username}-${msg.message.slice(0, 100)}`
+			const now = Date.now()
 
-	private isDuplicate(msg: NormalizedChatMessage): boolean {
-		const key = `${msg.platform}-${msg.username}-${msg.message.slice(0, 100)}`
-		const now = Date.now()
-
-		// Clean expired entries
-		for (const [k, ts] of this.dedupWindow) {
-			if (now - ts > DEDUP_WINDOW_MS) {
-				this.dedupWindow.delete(k)
+			// Clean expired entries
+			for (const [k, entry] of this.dedupWindow) {
+				if (now - entry.timestamp > this.config.dedup.windowMs) {
+					this.dedupWindow.delete(k)
+				}
 			}
+
+			const existing = this.dedupWindow.get(key)
+			if (existing) {
+				if (this.config.dedup.aggregateSpam && existing.bufferIndex >= 0) {
+					// Increment count on existing message in buffer
+					const buffered = this.messageBuffer[existing.bufferIndex]
+					if (buffered) {
+						buffered.count = (buffered.count || 1) + 1
+					}
+					this.dedupWindow.set(key, { timestamp: now, bufferIndex: existing.bufferIndex })
+				}
+				// Drop duplicate (whether aggregated or not)
+				return
+			}
+
+			msg.count = 1
+			const index = this.messageBuffer.length
+			this.dedupWindow.set(key, { timestamp: now, bufferIndex: index })
 		}
 
-		if (this.dedupWindow.has(key)) return true
-		this.dedupWindow.set(key, now)
-		return false
+		this.messageBuffer.push(msg)
+		this.flusher?.schedule()
 	}
 
-	// ── Batch flushing (30s interval) ──
+	// ── Debounce-based flushing ──
 
 	private startFlushing(): void {
-		this.flushTimer = setInterval(() => this.flush(), FLUSH_INTERVAL_MS)
-	}
-
-	private stopFlushing(): void {
-		if (this.flushTimer) {
-			clearInterval(this.flushTimer)
-			this.flushTimer = null
-		}
-		// Flush remaining messages
-		if (this.messageBuffer.length > 0) {
-			this.flush()
-		}
+		this.flusher = new DebouncedFlusher({
+			debounceMs: this.config.flush.debounceMs,
+			maxWaitMs: this.config.flush.maxWaitMs,
+			onFlush: () => this.flush(),
+		})
 	}
 
 	private flush(): void {
 		if (this.messageBuffer.length === 0) return
 
 		const all = this.messageBuffer.splice(0)
-		const sampled = sampleMessages(all, MAX_MESSAGES_PER_BATCH)
+
+		// Invalidate buffer indices in dedup window (buffer was drained)
+		for (const [, entry] of this.dedupWindow) {
+			entry.bufferIndex = -1
+		}
+
+		const sampled = sampleMessages(all, this.config.sampling.maxMessagesPerBatch)
 
 		// Count monetization and membership events
 		let donationCount = 0
@@ -233,7 +278,7 @@ export abstract class BaseAdapter implements PlatformAdapter {
 
 /**
  * Sample chat messages when volume exceeds threshold.
- * Priority: monetization > mod/broadcaster > regular (random sample).
+ * Priority: monetization > mod/broadcaster > aggregated spam > regular (random sample).
  */
 function sampleMessages(
 	messages: NormalizedChatMessage[],
@@ -249,7 +294,8 @@ function sampleMessages(
 			msg.monetization ||
 			msg.membership ||
 			msg.roles.includes('moderator') ||
-			msg.roles.includes('broadcaster')
+			msg.roles.includes('broadcaster') ||
+			(msg.count && msg.count > 1)
 
 		if (isPriority) {
 			priority.push(msg)

@@ -87,6 +87,9 @@ export interface NormalizedChatMessage {
 		username: string
 		message: string
 	}
+
+	// Spam aggregation: number of identical messages collapsed into this one
+	count?: number
 }
 
 export interface EmoteRef {

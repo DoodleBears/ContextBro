@@ -5,6 +5,7 @@
 	"tabs.endpoints": "Endpoints",
 	"tabs.templates": "Templates",
 	"tabs.general": "General",
+	"tabs.livestream": "Live Stream",
 
 	"sites.description": "Configure which websites to share and how.",
 	"sites.add": "Add",
@@ -94,5 +95,28 @@
 	"general.theme": "Theme",
 	"general.themeSystem": "System",
 	"general.themeLight": "Light",
-	"general.themeDark": "Dark"
+	"general.themeDark": "Dark",
+
+	"livestream.description": "Configure how live stream chat and transcripts are captured and sent.",
+	"livestream.youtube": "YouTube",
+	"livestream.twitch": "Twitch",
+	"livestream.chat": "Chat",
+	"livestream.transcript": "Transcript",
+	"livestream.flush": "Flush Strategy",
+	"livestream.flushDesc": "Controls when captured messages are sent to your endpoint.",
+	"livestream.debounce": "Debounce delay",
+	"livestream.debounceHint": "Wait this long after the last message before flushing.",
+	"livestream.maxWait": "Max wait",
+	"livestream.maxWaitHint": "Force flush after this duration even if messages keep arriving.",
+	"livestream.sampling": "Sampling",
+	"livestream.samplingHint": "Messages below this threshold are sent without sampling.",
+	"livestream.maxMessages": "Max messages per batch",
+	"livestream.dedup": "Spam Deduplication",
+	"livestream.dedupWindow": "Dedup window",
+	"livestream.aggregateSpam": "Aggregate spam",
+	"livestream.aggregateSpamHint": "Show \"message ×5\" instead of dropping duplicates.",
+	"livestream.transcriptSection": "Transcript Tracking",
+	"livestream.transcriptHint": "Progressive tracking sends only new segments as the video plays.",
+	"livestream.pollInterval": "Poll interval",
+	"livestream.progressThreshold": "Progress threshold"
 }

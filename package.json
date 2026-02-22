@@ -1,6 +1,6 @@
 {
 	"name": "context-bro",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Browser context provider for AI agents — Web Clipper for AI",
 	"type": "module",
 	"scripts": {
@@ -12,7 +12,8 @@
 		"zip:firefox": "wxt zip --browser firefox",
 		"check": "biome check .",
 		"check:fix": "biome check --write .",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"publish": "bash scripts/publish-r2.sh"
 	},
 	"repository": {
 		"type": "git",
