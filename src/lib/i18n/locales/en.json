@@ -87,6 +87,10 @@
 	"general.historyEmpty": "No sends recorded yet.",
 	"general.historyClear": "Clear",
 
+	"general.guide": "Getting Started",
+	"general.guideDesc": "Learn how to set up allowlist rules and auto-capture schedules.",
+	"general.guideLink": "View Guide",
+
 	"general.theme": "Theme",
 	"general.themeSystem": "System",
 	"general.themeLight": "Light",

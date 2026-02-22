@@ -87,6 +87,10 @@
 	"general.historyEmpty": "送信記録はまだありません。",
 	"general.historyClear": "クリア",
 
+	"general.guide": "はじめに",
+	"general.guideDesc": "許可リストのルールと自動キャプチャスケジュールの設定方法を学びます。",
+	"general.guideLink": "ガイドを見る",
+
 	"general.theme": "テーマ",
 	"general.themeSystem": "システム",
 	"general.themeLight": "ライト",

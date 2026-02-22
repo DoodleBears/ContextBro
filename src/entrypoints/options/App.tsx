@@ -1,6 +1,6 @@
 import '@/assets/tailwind.css'
 
-import { Crosshair, Globe, Keyboard, Workflow } from 'lucide-react'
+import { BookOpen, Crosshair, ExternalLink, Globe, Keyboard, Workflow } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import logoDark from '@/assets/logo-dark.svg'
 import logoLight from '@/assets/logo-light.svg'
@@ -21,7 +21,7 @@ const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
 }
 
 export default function App() {
-	const { t } = useLocale()
+	const { t, locale } = useLocale()
 	const [siteRules, setSiteRules] = useState<SiteRule[]>([])
 	const [endpoints, setEndpoints] = useState<Endpoint[]>([])
 	const [templates, setTemplates] = useState<ContextBroTemplate[]>([])
@@ -92,6 +92,8 @@ export default function App() {
 		applyTheme(theme)
 	}
 
+	const guideUrl = `https://contextbro.app/${locale === 'en' ? '' : `${locale}/`}guides/allowlist-schedule/`
+
 	return (
 		<div className="mx-auto min-h-screen max-w-4xl bg-background p-8">
 			{/* Header */}
@@ -109,21 +111,33 @@ export default function App() {
 
 			{/* Tabs */}
 			<Tabs value={activeTab} onValueChange={setActiveTab}>
-				<TabsList className="mb-8">
-					<TabsTrigger value="sites">
-						<Globe className="h-3.5 w-3.5 mr-1.5" />
-						{t('tabs.sites')}
-					</TabsTrigger>
-					<TabsTrigger value="endpoints">
-						<Crosshair className="h-3.5 w-3.5 mr-1.5" />
-						{t('tabs.endpoints')}
-					</TabsTrigger>
-					<TabsTrigger value="templates">
-						<Workflow className="h-3.5 w-3.5 mr-1.5" />
-						{t('tabs.templates')}
-					</TabsTrigger>
-					<TabsTrigger value="general">{t('tabs.general')}</TabsTrigger>
-				</TabsList>
+				<div className="mb-8 flex items-center justify-between">
+					<TabsList>
+						<TabsTrigger value="sites">
+							<Globe className="h-3.5 w-3.5 mr-1.5" />
+							{t('tabs.sites')}
+						</TabsTrigger>
+						<TabsTrigger value="endpoints">
+							<Crosshair className="h-3.5 w-3.5 mr-1.5" />
+							{t('tabs.endpoints')}
+						</TabsTrigger>
+						<TabsTrigger value="templates">
+							<Workflow className="h-3.5 w-3.5 mr-1.5" />
+							{t('tabs.templates')}
+						</TabsTrigger>
+						<TabsTrigger value="general">{t('tabs.general')}</TabsTrigger>
+					</TabsList>
+					<a
+						href={guideUrl}
+						target="_blank"
+						rel="noreferrer"
+						className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-primary"
+					>
+						<BookOpen className="h-3.5 w-3.5" />
+						{t('general.guideLink')}
+						<ExternalLink className="h-3 w-3" />
+					</a>
+				</div>
 
 				<TabsContent value="sites">
 					<p className="mb-5 text-sm text-muted-foreground">{t('sites.description')}</p>

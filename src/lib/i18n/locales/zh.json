@@ -87,6 +87,10 @@
 	"general.historyEmpty": "暂无发送记录。",
 	"general.historyClear": "清空",
 
+	"general.guide": "使用指南",
+	"general.guideDesc": "了解如何配置允许列表规则和自动捕获计划。",
+	"general.guideLink": "查看指南",
+
 	"general.theme": "主题",
 	"general.themeSystem": "跟随系统",
 	"general.themeLight": "浅色",

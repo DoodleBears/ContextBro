@@ -1,6 +1,6 @@
 import '@/assets/tailwind.css'
 
-import { Send, Settings } from 'lucide-react'
+import { BookOpen, Send, Settings } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import logoDark from '@/assets/logo-dark.svg'
 import logoLight from '@/assets/logo-light.svg'
@@ -23,7 +23,7 @@ interface PageInfo {
 type ShareStatus = 'idle' | 'loading' | 'success' | 'error'
 
 export default function App() {
-	const { t } = useLocale()
+	const { t, locale } = useLocale()
 	const [endpoints, setEndpoints] = useState<Endpoint[]>([])
 	const [templates, setTemplates] = useState<ContextBroTemplate[]>([])
 	const [selectedEndpoint, setSelectedEndpoint] = useState('')
@@ -210,15 +210,31 @@ export default function App() {
 					<img src={logoDark} alt="" className="hidden h-5 w-5 dark:block" />
 					<h1 className="text-sm font-semibold text-foreground">Context Bro</h1>
 				</div>
-				<Button
-					variant="ghost"
-					size="icon"
-					className="h-7 w-7"
-					onClick={openOptions}
-					title="Settings"
-				>
-					<Settings className="h-4 w-4" />
-				</Button>
+				<div className="flex items-center gap-0.5">
+					<Button
+						variant="ghost"
+						size="icon"
+						className="h-7 w-7"
+						onClick={() =>
+							window.open(
+								`https://contextbro.app/${locale === 'en' ? '' : `${locale}/`}guides/allowlist-schedule/`,
+								'_blank',
+							)
+						}
+						title={t('general.guide')}
+					>
+						<BookOpen className="h-4 w-4" />
+					</Button>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="h-7 w-7"
+						onClick={openOptions}
+						title="Settings"
+					>
+						<Settings className="h-4 w-4" />
+					</Button>
+				</div>
 			</div>
 
 			<div className="space-y-3 p-4">
