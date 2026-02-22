@@ -87,10 +87,10 @@ export default defineConfig({
 							slug: 'guides/endpoints',
 						},
 						{
-							label: 'Allowlist & Scheduled Sharing',
+							label: 'Site Rules & Auto-Capture',
 							translations: {
-								'zh-CN': '允许列表与定时分享',
-								ja: 'Allowlistとスケジュール共有',
+								'zh-CN': '站点规则与自动捕获',
+								ja: 'サイトルールと自動キャプチャ',
 							},
 							slug: 'guides/allowlist-schedule',
 						},

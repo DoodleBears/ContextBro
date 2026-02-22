@@ -39,14 +39,31 @@ The template engine is AST-based:
 - CSS selector variables (`{{selector:.class@attr}}`)
 - Schema.org structured data extraction
 
-## Scheduled Extraction
+## Auto-Capture
 
-The scheduler uses the Chrome Alarms API to periodically extract allowlisted domains:
+Context Bro has three content capture models, each designed for different content volatility:
 
-- Allowlist-first: only configured domains are auto-extracted
-- SHA-256 content hashing for deduplication
-- Configurable intervals (5min to 2hr)
-- Focused tab or all-allowed-tabs modes
+### Focused Mode
+
+Event-driven capture for pages you're actively reading:
+
+- Triggers on tab focus/navigation to a matching domain
+- 10-second dwell before first extraction
+- Optional **refetch** at configurable intervals (10s–1hr) for slowly-changing pages (feeds, dashboards)
+- Stops when you switch away from the tab
+- Uses `setInterval` — no Chrome Alarm needed since the user is actively viewing
+
+### Any-Tab Mode
+
+Periodic background capture using the Chrome Alarms API:
+
+- Scans all open tabs matching Site Rule patterns
+- Configurable polling interval (minutes to hours)
+- Runs even when tabs are in the background
+
+### Shared: Deduplication
+
+Both modes use SHA-256 content hashing with a configurable per-rule dedup window to prevent sending unchanged content.
 
 ## Platform Adapters
 

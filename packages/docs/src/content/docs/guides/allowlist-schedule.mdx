@@ -1,21 +1,23 @@
 ---
-title: Allowlist & Scheduled Sharing
-description: Configure which domains are auto-shared and set up periodic extraction intervals.
+title: Site Rules & Auto-Capture
+description: Configure per-site capture rules with domain patterns, auto-capture modes, refetch, and deduplication.
 ---
 
-## Allowlist
+## Site Rules
 
-The Allowlist controls which domains are eligible for **scheduled auto-sharing**. Only pages on allowlisted domains will be extracted on a timer.
+Site Rules control **which websites** Context Bro auto-captures and **how** it captures them. Each rule defines a group of domains with its own template, endpoints, capture mode, and dedup settings.
 
-Manual sharing (popup, shortcut, context menu) works on **any domain** regardless of the Allowlist.
+Manual sharing (popup, shortcut, context menu) works on **any domain** regardless of Site Rules.
 
-### Adding Domains
+### Creating a Rule
 
-1. Go to **Settings → Allowlist**
-2. Type a domain pattern and press Enter
-3. Toggle domains on/off individually
+1. Go to **Settings → Sites**
+2. Enter a name (e.g. "SNS", "Dev", "News") and click **Add**
+3. Add domain patterns, select a template, and choose endpoints
 
 ### Domain Patterns
+
+Each rule contains one or more domain patterns (one per line):
 
 | Pattern | Matches |
 |---------|---------|
@@ -25,7 +27,7 @@ Manual sharing (popup, shortcut, context menu) works on **any domain** regardles
 
 ### Presets
 
-Click a preset button to add a curated group of domains:
+Click a preset button to quickly create a rule with a curated group of domains:
 
 | Preset | Domains |
 |--------|---------|
@@ -34,35 +36,86 @@ Click a preset button to add a curated group of domains:
 | **Social** | reddit.com, twitter.com, mastodon.social, etc. |
 | **Streaming** | twitch.tv, youtube.com |
 
-### Per-Domain Template
+### Per-Rule Template & Endpoints
 
-Each allowlisted domain can optionally bind to a specific template. When the scheduler extracts that domain, it uses the bound template instead of the default.
+Each rule can bind to a specific template and one or more endpoints. When auto-capture triggers for that rule, it uses the bound template and sends to the selected endpoints.
 
-## Scheduled Sharing
+## Auto-Capture
 
-When enabled, Context Bro periodically extracts pages from allowlisted domains and sends them to your default endpoint.
+Enable the **Auto-capture** toggle on a rule to have Context Bro automatically extract and send page content. Choose between two capture modes:
+
+### When Focused (Focused Mode)
+
+Best for pages you're actively reading — articles, feeds, dashboards.
+
+| Behavior | Description |
+|----------|-------------|
+| **Trigger** | You navigate to or focus a tab matching the rule |
+| **Dwell** | Waits 10 seconds to ensure the page has loaded |
+| **Capture** | Extracts content once after dwell |
+| **Refetch** | Optionally re-extracts at a configurable interval (see below) |
+| **Stops** | When you switch away from the tab or close it |
+
+This mode is event-driven — it only runs while you're actively viewing a matching page.
+
+### While Tab Open (Any-Tab Mode)
+
+Best for background monitoring — keeping tabs open that you want periodically captured.
+
+| Behavior | Description |
+|----------|-------------|
+| **Trigger** | Chrome Alarm fires at the configured interval |
+| **Scope** | All open tabs matching the rule's patterns |
+| **Interval** | Configurable (minutes or hours) |
+| **Capture** | Extracts content from every matching tab each cycle |
+
+This mode uses the Chrome Alarms API and runs even when the tabs are in the background.
+
+## Refetch
+
+**Refetch** extends focused mode for slowly-changing pages — feeds (HN, Reddit, Twitter), dashboards, monitoring pages, or any content that updates over minutes or hours.
+
+Without refetch, focused mode captures once after the 10-second dwell and stops. With refetch enabled, it continues re-extracting at your configured interval while you stay on the page.
 
 ### Configuration
 
-Go to **Settings → Schedule**:
+Refetch controls appear when a rule has **Auto-capture** enabled and **When focused** mode selected:
 
-| Setting | Options |
-|---------|---------|
-| **Enable** | Toggle auto-sharing on/off |
-| **Interval** | 5min, 10min, 15min, 30min, 1hr, 2hr |
-| **Mode** | Focused tab only / All allowed tabs |
+```
+⊙ Auto-capture  [When focused ▾]
+  ☑ Refetch   [30] [sec ▾]
+  ☑ Dedup     [15] [min ▾]
+```
 
-### How It Works
+| Setting | Range | Default |
+|---------|-------|---------|
+| **Refetch interval** | 10 seconds – 1 hour | 60 seconds |
 
-1. The Chrome Alarms API fires at your configured interval
-2. Context Bro queries your open tabs
-3. Tabs matching allowlisted domains are selected
-4. For each selected tab:
-   - Content is extracted
-   - A SHA-256 hash is computed
-   - If the content hasn't changed since last share → skip (dedup)
-   - Otherwise → compile template → POST to default endpoint
+### How Refetch Works
 
-### Deduplication
+1. You focus a tab matching a focused-mode rule
+2. After 10s dwell, initial content is extracted and sent
+3. A `setInterval` timer starts at your configured refetch interval
+4. Each tick re-extracts the page content
+5. Dedup checks if content has actually changed before sending
+6. Timer stops when you switch away, navigate, or close the tab
 
-Content hashes are stored locally in `chrome.storage.local`. This prevents sending the same unchanged page repeatedly. Hashes are cleared when you clear extension data or uninstall.
+### Refetch + Dedup Interaction
+
+Refetch and dedup work together to minimize unnecessary API calls:
+
+| Scenario | Result |
+|----------|--------|
+| Page unchanged, within dedup window | **Skip** — no API call |
+| Page content changed | **Send** — new content detected |
+| Dedup window expired (even if same content) | **Send** — acts as a periodic heartbeat |
+
+## Deduplication
+
+Each rule has its own dedup toggle and configurable window. When enabled, Context Bro computes a SHA-256 hash of the extracted content. If the content hasn't changed since the last send within the dedup window, it skips the send.
+
+| Setting | Range | Default |
+|---------|-------|---------|
+| **Dedup window** | Seconds, minutes, or hours | 15 minutes |
+
+Hashes are stored locally in `chrome.storage.local`. They are cleared when you clear extension data or uninstall.

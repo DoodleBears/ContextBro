@@ -8,7 +8,7 @@ description: Context Bro's allowlist-first privacy model — default share nothi
 Context Bro follows a **share-nothing-by-default** privacy model:
 
 - **Manual sharing** works on any page (you explicitly trigger it)
-- **Scheduled auto-sharing** only works on domains you've added to the Allowlist
+- **Auto-capture** only works on domains you've added to your Site Rules
 - **No data is ever sent** unless you've configured an endpoint and triggered a share
 
 ## What Data Is Extracted
@@ -33,11 +33,11 @@ When you share a page, Context Bro extracts:
 
 Data is sent exclusively to **API endpoints you configure yourself**. Context Bro makes no network requests to any other destination.
 
-All settings (endpoints, templates, allowlist) are stored locally in your browser via `chrome.storage.local`. Uninstalling the extension removes all data.
+All settings (endpoints, templates, site rules) are stored locally in your browser via `chrome.storage.local`. Uninstalling the extension removes all data.
 
 ## Content Deduplication
 
-When using scheduled sharing, Context Bro computes a SHA-256 hash of the extracted content. If the content hasn't changed since the last share, it skips the page — avoiding duplicate payloads.
+When using auto-capture, Context Bro computes a SHA-256 hash of the extracted content. If the content hasn't changed since the last send (within the per-rule dedup window), it skips the page — avoiding duplicate payloads.
 
 Hashes are stored locally and can be cleared from Settings at any time.
 
