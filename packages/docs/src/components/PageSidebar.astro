@@ -1,15 +1,15 @@
 ---
 import TableOfContents from 'virtual:starlight/components/TableOfContents'
-import { Graph, PageBacklinks } from 'starlight-site-graph/components'
-import siteGraphConfig from 'virtual:starlight-site-graph/config'
 import astroConfig from 'virtual:starlight-site-graph/astro-config'
+import siteGraphConfig from 'virtual:starlight-site-graph/config'
+import { Graph, PageBacklinks } from 'starlight-site-graph/components'
 
 const usesTrailingSlash = astroConfig.trailingSlash !== 'never'
 let graphSlug = Astro.url.pathname.replace(/\\/g, '/').replace(/^\/+/, '')
 if (usesTrailingSlash) {
-  graphSlug = graphSlug.endsWith('/') ? graphSlug : `${graphSlug}/`
+	graphSlug = graphSlug.endsWith('/') ? graphSlug : `${graphSlug}/`
 } else {
-  graphSlug = graphSlug.endsWith('/') ? graphSlug.slice(0, -1) : graphSlug
+	graphSlug = graphSlug.endsWith('/') ? graphSlug.slice(0, -1) : graphSlug
 }
 ---
 
