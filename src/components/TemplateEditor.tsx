@@ -155,24 +155,6 @@ export function TemplateEditor({ templates, onChange }: Props) {
 								<div className="border-t border-border/50" />
 								<div>
 									<Label className="text-xs text-muted-foreground">
-										{t('templates.triggers')}
-										<span className="ml-1 font-normal">({t('templates.triggersDesc')})</span>
-									</Label>
-									<Textarea
-										value={(tmpl.triggers || []).join('\n')}
-										onChange={(e) =>
-											updateTemplate(tmpl.id, {
-												triggers: e.target.value.split('\n').filter(Boolean),
-											})
-										}
-										placeholder={t('templates.triggersPlaceholder')}
-										rows={2}
-										className="mt-1.5 font-mono text-xs"
-									/>
-								</div>
-
-								<div>
-									<Label className="text-xs text-muted-foreground">
 										{t('templates.body')}
 										<span className="ml-1 font-normal">({t('templates.bodyDesc')})</span>
 									</Label>
