@@ -1,53 +1,147 @@
 @import "tailwindcss";
 
-@theme {
-	--color-background: oklch(1 0 0);
-	--color-foreground: oklch(0.145 0 0);
-	--color-card: oklch(1 0 0);
-	--color-card-foreground: oklch(0.145 0 0);
-	--color-popover: oklch(1 0 0);
-	--color-popover-foreground: oklch(0.145 0 0);
-	--color-primary: oklch(0.45 0.2 264);
-	--color-primary-foreground: oklch(0.985 0 0);
-	--color-secondary: oklch(0.97 0 0);
-	--color-secondary-foreground: oklch(0.205 0 0);
-	--color-muted: oklch(0.97 0 0);
-	--color-muted-foreground: oklch(0.556 0 0);
-	--color-accent: oklch(0.97 0 0);
-	--color-accent-foreground: oklch(0.205 0 0);
-	--color-destructive: oklch(0.577 0.245 27.325);
-	--color-destructive-foreground: oklch(0.577 0.245 27.325);
-	--color-border: oklch(0.922 0 0);
-	--color-input: oklch(0.922 0 0);
-	--color-ring: oklch(0.45 0.2 264);
-	--color-success: oklch(0.627 0.194 149.214);
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--color-success: var(--success);
+	--color-success-foreground: var(--success-foreground);
+	--color-warning: var(--warning);
+	--color-warning-foreground: var(--warning-foreground);
+	--color-danger: var(--danger);
+	--color-danger-foreground: var(--danger-foreground);
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+	--radius-2xl: calc(var(--radius) + 8px);
+}
+
+:root {
+	--background: oklch(0.985 0.003 90);
+	--foreground: oklch(0.145 0 0);
+	--card: oklch(100% 0.00011 271.152);
+	--card-foreground: oklch(0.145 0 0);
+	--popover: oklch(0.985 0.004 90);
+	--popover-foreground: oklch(0.145 0 0);
+	--primary: oklch(0.7765 0.1341 114.82);
+	--primary-foreground: oklch(0.20 0.04 115);
+	--secondary: oklch(0.967 0.001 286.375);
+	--secondary-foreground: oklch(0.21 0.006 285.885);
+	--muted: oklch(0.97 0 0);
+	--muted-foreground: oklch(0.556 0 0);
+	--accent: oklch(0.97 0 0);
+	--accent-foreground: oklch(0.205 0 0);
+	--destructive: oklch(0.58 0.22 27);
+	--destructive-foreground: oklch(0.985 0 0);
+	--border: oklch(0.922 0 0);
+	--input: oklch(0.922 0 0);
+	--ring: oklch(0.708 0 0);
 	--radius: 0.625rem;
+	--success: oklch(0.925 0.084 155.995);
+	--success-foreground: oklch(71.518% 0.17556 152.011);
+	--warning: oklch(0.948 0.096 95.277);
+	--warning-foreground: oklch(69.382% 0.13397 68.454);
+	--danger: oklch(0.936 0.032 17.717);
+	--danger-foreground: oklch(0.577 0.245 27.325);
 }
 
-body {
-	background-color: var(--color-background);
-	color: var(--color-foreground);
+.dark {
+	--background: oklch(0.145 0 0);
+	--foreground: oklch(0.985 0 0);
+	--card: oklch(0.205 0 0);
+	--card-foreground: oklch(0.985 0 0);
+	--popover: oklch(0.205 0 0);
+	--popover-foreground: oklch(0.985 0 0);
+	--primary: oklch(0.55 0.16 115);
+	--primary-foreground: oklch(0.98 0.02 115);
+	--secondary: oklch(0.274 0.006 286.033);
+	--secondary-foreground: oklch(0.985 0 0);
+	--muted: oklch(0.269 0 0);
+	--muted-foreground: oklch(0.708 0 0);
+	--accent: oklch(0.371 0 0);
+	--accent-foreground: oklch(0.985 0 0);
+	--destructive: oklch(0.704 0.191 22.216);
+	--border: oklch(1 0 0 / 10%);
+	--input: oklch(1 0 0 / 15%);
+	--ring: oklch(0.556 0 0);
+	--success: oklch(0.269 0.05 153);
+	--success-foreground: oklch(0.723 0.191 149.579);
+	--warning: oklch(0.269 0.05 85);
+	--warning-foreground: oklch(0.828 0.189 84.429);
+	--danger: oklch(0.269 0.05 25);
+	--danger-foreground: oklch(0.792 0.209 24.658);
 }
 
-:root.dark {
-	--color-background: oklch(0.145 0 0);
-	--color-foreground: oklch(0.985 0 0);
-	--color-card: oklch(0.175 0 0);
-	--color-card-foreground: oklch(0.985 0 0);
-	--color-popover: oklch(0.175 0 0);
-	--color-popover-foreground: oklch(0.985 0 0);
-	--color-primary: oklch(0.6 0.2 264);
-	--color-primary-foreground: oklch(0.145 0 0);
-	--color-secondary: oklch(0.215 0 0);
-	--color-secondary-foreground: oklch(0.985 0 0);
-	--color-muted: oklch(0.215 0 0);
-	--color-muted-foreground: oklch(0.65 0 0);
-	--color-accent: oklch(0.215 0 0);
-	--color-accent-foreground: oklch(0.985 0 0);
-	--color-destructive: oklch(0.65 0.25 27.325);
-	--color-destructive-foreground: oklch(0.985 0 0);
-	--color-border: oklch(0.3 0 0);
-	--color-input: oklch(0.3 0 0);
-	--color-ring: oklch(0.6 0.2 264);
-	--color-success: oklch(0.75 0.18 149.214);
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+
+	/* Custom scrollbar */
+	* {
+		scrollbar-width: thin;
+		scrollbar-color: oklch(0.7 0 0 / 30%) transparent;
+	}
+
+	.dark * {
+		scrollbar-color: oklch(0.5 0 0 / 40%) transparent;
+	}
+
+	::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+	}
+
+	::-webkit-scrollbar-track {
+		background: transparent;
+		border-radius: 4px;
+	}
+
+	::-webkit-scrollbar-thumb {
+		background: oklch(0.7 0 0 / 30%);
+		border-radius: 4px;
+		border: 2px solid transparent;
+		background-clip: content-box;
+	}
+
+	::-webkit-scrollbar-thumb:hover {
+		background: oklch(0.6 0 0 / 50%);
+		background-clip: content-box;
+	}
+
+	.dark ::-webkit-scrollbar-thumb {
+		background: oklch(0.5 0 0 / 40%);
+		background-clip: content-box;
+	}
+
+	.dark ::-webkit-scrollbar-thumb:hover {
+		background: oklch(0.6 0 0 / 60%);
+		background-clip: content-box;
+	}
+
+	::-webkit-scrollbar-corner {
+		background: transparent;
+	}
 }

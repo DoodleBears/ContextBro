@@ -1,4 +1,4 @@
-import { Copy, Plus, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Copy, Plus, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -103,131 +103,162 @@ export function EndpointEditor({ endpoints, onChange }: Props) {
 		}
 	}
 
-	return (
-		<div className="space-y-4">
-			{endpoints.map((ep) => (
-				<Card key={ep.id} id={`endpoint-${ep.id}`} className="p-4">
-					<div className="flex items-center justify-between mb-3">
-						<div className="flex items-center gap-3">
-							<Switch
-								checked={ep.enabled}
-								onCheckedChange={(checked) => updateEndpoint(ep.id, { enabled: checked })}
-							/>
-							{editingId === ep.id ? (
-								<Input
-									value={ep.name}
-									onChange={(e) => updateEndpoint(ep.id, { name: e.target.value })}
-									placeholder={t('endpoints.name')}
-									className="h-8 w-48 text-sm"
-								/>
-							) : (
-								<button
-									type="button"
-									onClick={() => setEditingId(ep.id)}
-									className="text-sm font-medium hover:text-primary transition-colors"
-								>
-									{ep.name || t('endpoints.unnamed')}
-								</button>
-							)}
-						</div>
-						<div className="flex items-center gap-1">
-							<Button
-								variant="ghost"
-								size="icon"
-								className="h-7 w-7 text-muted-foreground hover:text-foreground"
-								onClick={() => cloneEndpoint(ep)}
-								title={t('common.clone')}
-							>
-								<Copy className="h-3.5 w-3.5" />
-							</Button>
-							<Button
-								variant="ghost"
-								size="icon"
-								className="h-7 w-7 text-muted-foreground hover:text-destructive"
-								onClick={() => removeEndpoint(ep.id)}
-							>
-								<Trash2 className="h-3.5 w-3.5" />
-							</Button>
-						</div>
-					</div>
+	const isOpen = (id: string) => editingId === id
 
-					{editingId === ep.id && (
-						<div className="space-y-3">
-							<div>
-								<Label className="text-xs text-muted-foreground">{t('endpoints.url')}</Label>
-								<Input
-									type="url"
-									value={ep.url}
-									onChange={(e) => updateEndpoint(ep.id, { url: e.target.value })}
-									placeholder={t('endpoints.urlPlaceholder')}
-									className="mt-1 text-sm"
+	return (
+		<div className="space-y-3">
+			{endpoints.map((ep) => {
+				const open = isOpen(ep.id)
+				return (
+					<Card
+						key={ep.id}
+						id={`endpoint-${ep.id}`}
+						className={`overflow-hidden transition-colors ${
+							open ? 'p-5' : 'p-4 cursor-pointer hover:bg-accent/50'
+						}`}
+						onClick={open ? undefined : () => setEditingId(ep.id)}
+					>
+						{/* Header row */}
+						<div className={`flex items-center gap-3 ${open ? '' : ''}`}>
+							{/* biome-ignore lint: stop card click propagation */}
+							<div onClick={(e) => e.stopPropagation()}>
+								<Switch
+									checked={ep.enabled}
+									onCheckedChange={(checked) => updateEndpoint(ep.id, { enabled: checked })}
 								/>
 							</div>
 
-							<div>
-								<div className="flex items-center justify-between mb-1">
-									<Label className="text-xs text-muted-foreground">{t('endpoints.headers')}</Label>
+							<div className="flex-1 min-w-0">
+								{open ? (
+									<Input
+										value={ep.name}
+										onChange={(e) => updateEndpoint(ep.id, { name: e.target.value })}
+										placeholder={t('endpoints.name')}
+										className="h-8 w-64 text-sm"
+									/>
+								) : (
+									<div className="flex items-center gap-3 min-w-0">
+										<span className="text-sm font-medium truncate">
+											{ep.name || t('endpoints.unnamed')}
+										</span>
+										{ep.url && (
+											<span className="text-xs text-muted-foreground truncate hidden sm:inline">
+												{ep.url}
+											</span>
+										)}
+									</div>
+								)}
+							</div>
+
+							{/* biome-ignore lint: stop card click propagation */}
+							<div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="h-7 w-7 text-muted-foreground hover:text-foreground"
+									onClick={() => cloneEndpoint(ep)}
+									title={t('common.clone')}
+								>
+									<Copy className="h-3.5 w-3.5" />
+								</Button>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="h-7 w-7 text-muted-foreground hover:text-destructive"
+									onClick={() => removeEndpoint(ep.id)}
+								>
+									<Trash2 className="h-3.5 w-3.5" />
+								</Button>
+							</div>
+
+							{open ? (
+								<ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+							) : (
+								<ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+							)}
+						</div>
+
+						{/* Expanded edit form */}
+						{open && (
+							<div className="mt-4 pt-4 border-t border-border/50 space-y-4">
+								<div>
+									<Label className="text-xs text-muted-foreground">{t('endpoints.url')}</Label>
+									<Input
+										type="url"
+										value={ep.url}
+										onChange={(e) => updateEndpoint(ep.id, { url: e.target.value })}
+										placeholder={t('endpoints.urlPlaceholder')}
+										className="mt-1.5 text-sm"
+									/>
+								</div>
+
+								<div>
+									<div className="flex items-center justify-between mb-1.5">
+										<Label className="text-xs text-muted-foreground">
+											{t('endpoints.headers')}
+										</Label>
+										<Button
+											variant="ghost"
+											size="sm"
+											className="h-6 text-xs"
+											onClick={() => addHeader(ep.id)}
+										>
+											<Plus className="h-3 w-3" />
+											{t('endpoints.addHeader')}
+										</Button>
+									</div>
+									{Object.entries(ep.headers).map(([key, value]) => (
+										<div key={key} className="mb-1.5 flex gap-1.5">
+											<Input
+												value={key}
+												onChange={(e) => updateHeader(ep.id, key, e.target.value, value)}
+												placeholder={t('endpoints.headerName')}
+												className="w-1/3 h-8 text-xs"
+											/>
+											<Input
+												value={value}
+												onChange={(e) => updateHeader(ep.id, key, key, e.target.value)}
+												placeholder={t('endpoints.headerValue')}
+												className="flex-1 h-8 text-xs"
+											/>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="h-8 w-8 text-muted-foreground hover:text-destructive"
+												onClick={() => removeHeader(ep.id, key)}
+											>
+												<X className="h-3 w-3" />
+											</Button>
+										</div>
+									))}
+								</div>
+
+								<div className="flex items-center gap-2">
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => testEndpoint(ep)}
+										disabled={!ep.url}
+									>
+										{t('endpoints.test')}
+									</Button>
+									{testStatus[ep.id] && (
+										<span className="text-xs text-muted-foreground">{testStatus[ep.id]}</span>
+									)}
 									<Button
 										variant="ghost"
 										size="sm"
-										className="h-6 text-xs"
-										onClick={() => addHeader(ep.id)}
+										className="ml-auto"
+										onClick={() => setEditingId(null)}
 									>
-										<Plus className="h-3 w-3" />
-										{t('endpoints.addHeader')}
+										{t('common.done')}
 									</Button>
 								</div>
-								{Object.entries(ep.headers).map(([key, value]) => (
-									<div key={key} className="mb-1 flex gap-1">
-										<Input
-											value={key}
-											onChange={(e) => updateHeader(ep.id, key, e.target.value, value)}
-											placeholder={t('endpoints.headerName')}
-											className="w-1/3 h-8 text-xs"
-										/>
-										<Input
-											value={value}
-											onChange={(e) => updateHeader(ep.id, key, key, e.target.value)}
-											placeholder={t('endpoints.headerValue')}
-											className="flex-1 h-8 text-xs"
-										/>
-										<Button
-											variant="ghost"
-											size="icon"
-											className="h-8 w-8 text-muted-foreground hover:text-destructive"
-											onClick={() => removeHeader(ep.id, key)}
-										>
-											<X className="h-3 w-3" />
-										</Button>
-									</div>
-								))}
 							</div>
-
-							<div className="flex items-center gap-2">
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => testEndpoint(ep)}
-									disabled={!ep.url}
-								>
-									{t('endpoints.test')}
-								</Button>
-								{testStatus[ep.id] && (
-									<span className="text-xs text-muted-foreground">{testStatus[ep.id]}</span>
-								)}
-								<Button
-									variant="ghost"
-									size="sm"
-									className="ml-auto"
-									onClick={() => setEditingId(null)}
-								>
-									{t('common.done')}
-								</Button>
-							</div>
-						</div>
-					)}
-				</Card>
-			))}
+						)}
+					</Card>
+				)
+			})}
 
 			{/* Add endpoint */}
 			<div className="sticky bottom-0 z-10 -mx-1 rounded-lg border bg-background/80 p-3 backdrop-blur-sm">

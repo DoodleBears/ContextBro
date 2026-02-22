@@ -175,7 +175,7 @@ export function SiteRuleEditor({
 					<Card
 						key={rule.id}
 						id={`site-rule-${rule.id}`}
-						className={`p-4 transition-opacity ${!rule.enabled ? 'opacity-50' : ''}`}
+						className={`p-5 transition-opacity ${!rule.enabled ? 'opacity-50' : ''}`}
 					>
 						<div className="space-y-3">
 							{/* Row 1: Enable + Pattern (editable) + Clone + Remove */}

@@ -83,9 +83,9 @@ export default function App() {
 	}
 
 	return (
-		<div className="mx-auto min-h-screen max-w-4xl bg-background p-6">
+		<div className="mx-auto min-h-screen max-w-4xl bg-background p-8">
 			{/* Header */}
-			<div className="mb-6 flex items-center justify-between">
+			<div className="mb-8 flex items-center justify-between">
 				<h1 className="text-xl font-bold text-foreground">{t('settings.title')}</h1>
 				<div className="flex items-center gap-2">
 					<ThemeSwitcher theme={globalSettings.theme} onChange={handleThemeChange} />
@@ -95,7 +95,7 @@ export default function App() {
 
 			{/* Tabs */}
 			<Tabs value={activeTab} onValueChange={setActiveTab}>
-				<TabsList className="mb-6">
+				<TabsList className="mb-8">
 					<TabsTrigger value="sites">
 						<Globe className="h-3.5 w-3.5 mr-1.5" />
 						{t('tabs.sites')}
@@ -112,7 +112,7 @@ export default function App() {
 				</TabsList>
 
 				<TabsContent value="sites">
-					<p className="mb-4 text-sm text-muted-foreground">{t('sites.description')}</p>
+					<p className="mb-5 text-sm text-muted-foreground">{t('sites.description')}</p>
 					<SiteRuleEditor
 						siteRules={siteRules}
 						endpoints={endpoints}
@@ -123,18 +123,18 @@ export default function App() {
 				</TabsContent>
 
 				<TabsContent value="endpoints">
-					<p className="mb-4 text-sm text-muted-foreground">{t('endpoints.description')}</p>
+					<p className="mb-5 text-sm text-muted-foreground">{t('endpoints.description')}</p>
 					<EndpointEditor endpoints={endpoints} onChange={setEndpoints} />
 				</TabsContent>
 
 				<TabsContent value="templates">
-					<p className="mb-4 text-sm text-muted-foreground">{t('templates.description')}</p>
+					<p className="mb-5 text-sm text-muted-foreground">{t('templates.description')}</p>
 					<TemplateEditor templates={templates} onChange={setTemplates} />
 				</TabsContent>
 
 				<TabsContent value="general">
-					<div className="space-y-4">
-						<div className="rounded-lg border p-4">
+					<div className="space-y-5">
+						<div className="rounded-lg border p-5">
 							<div className="flex items-center gap-2 mb-2">
 								<Keyboard className="h-4 w-4 text-muted-foreground" />
 								<h3 className="text-sm font-medium">{t('general.keyboard')}</h3>
@@ -147,7 +147,7 @@ export default function App() {
 
 						<SendHistoryPanel />
 
-						<div className="rounded-lg border p-4">
+						<div className="rounded-lg border p-5">
 							<h3 className="mb-2 text-sm font-medium">{t('general.about')}</h3>
 							<p className="text-sm text-muted-foreground">{t('general.aboutDesc')}</p>
 							<p className="mt-1 text-xs text-muted-foreground">{t('general.aboutTagline')}</p>
