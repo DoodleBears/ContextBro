@@ -34,15 +34,19 @@ export default defineContentScript({
 			// Remove previous if mounted
 			ui.remove()
 
-			// Mount first, then position — WXT overlay may reset styles on mount
+			// Mount first, then position the inner <html> element.
+			// WXT overlay sets shadowHost to width:0;height:0 (zero-size anchor),
+			// so positioning/transforms on it won't work. Style the inner <html>
+			// with position:fixed to break out of the zero-size parent.
 			ui.mount()
-			const host = ui.shadowHost
-			host.style.position = 'fixed'
-			host.style.top = '12px'
-			host.style.left = '50%'
-			host.style.transform = 'translateX(-50%)'
-			host.style.zIndex = '2147483646'
-			host.style.pointerEvents = 'none'
+			const innerHtml = ui.shadow.querySelector('html') as HTMLElement | null
+			if (innerHtml) {
+				innerHtml.style.position = 'fixed'
+				innerHtml.style.top = '12px'
+				innerHtml.style.left = '50%'
+				innerHtml.style.transform = 'translateX(-50%)'
+				innerHtml.style.pointerEvents = 'none'
+			}
 
 			if (root) {
 				root.render(

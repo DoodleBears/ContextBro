@@ -58,12 +58,16 @@ export default defineContentScript({
 						top = mouseY - 40
 					}
 
-					// Mount first, then position — WXT overlay may reset styles on mount
+					// Mount first, then position the inner <html> element.
+					// WXT overlay sets shadowHost to width:0;height:0, so we style
+					// the inner <html> with position:fixed to break out.
 					ui.mount()
-					const host = ui.shadowHost
-					host.style.position = 'fixed'
-					host.style.left = `${left}px`
-					host.style.top = `${top}px`
+					const innerHtml = ui.shadow.querySelector('html') as HTMLElement | null
+					if (innerHtml) {
+						innerHtml.style.position = 'fixed'
+						innerHtml.style.left = `${left}px`
+						innerHtml.style.top = `${top}px`
+					}
 				} else {
 					ui.remove()
 					currentSelection = ''
