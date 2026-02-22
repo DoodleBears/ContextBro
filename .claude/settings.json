@@ -24,7 +24,14 @@
       "Bash(pnpm biome check:*)",
       "Bash(pnpm run build:*)",
       "Bash(git add:*)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Read(//tmp/social_stream/sources/**)",
+      "Read(//home/doodlebear/project/kite-u/**)",
+      "Bash(git -C /home/doodlebear/project/ContextBro add src/components/TemplateEditor.tsx)",
+      "Bash(git -C:*)"
+    ],
+    "additionalDirectories": [
+      "/home/doodlebear/project/ContextBro/packages/docs/src/{assets,components,styles,content/{docs"
     ]
   }
 }
