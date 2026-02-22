@@ -26,6 +26,8 @@
 	"sites.unitSeconds": "sec",
 	"sites.unitMinutes": "min",
 	"sites.unitHours": "hour",
+	"sites.dwellPrefix": "After",
+	"sites.dwellSuffix": "focused",
 	"sites.refetch": "Refetch",
 	"sites.dedup": "Dedup",
 

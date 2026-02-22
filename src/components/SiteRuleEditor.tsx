@@ -81,6 +81,7 @@ export function SiteRuleEditor({
 				autoShare: false,
 				intervalMinutes: 15,
 				scheduleMode: 'focused',
+				dwellSeconds: 10,
 				refetchEnabled: false,
 				refetchIntervalSeconds: 60,
 				dedupEnabled: true,
@@ -150,6 +151,7 @@ export function SiteRuleEditor({
 			autoShare: false,
 			intervalMinutes: 15,
 			scheduleMode: 'focused',
+			dwellSeconds: 10,
 			refetchEnabled: false,
 			refetchIntervalSeconds: 60,
 			dedupEnabled: true,
@@ -401,6 +403,59 @@ export function SiteRuleEditor({
 											</div>
 										)}
 									</>
+								)}
+
+								{/* Dwell time — only for focused mode */}
+								{rule.autoShare && rule.scheduleMode === 'focused' && (
+									<div className="flex items-center gap-1.5">
+										{t('sites.dwellPrefix') && (
+											<span className="text-xs whitespace-nowrap">
+												{t('sites.dwellPrefix')}
+											</span>
+										)}
+										<Input
+											type="number"
+											min={1}
+											value={fromSeconds(rule.dwellSeconds ?? 10).value}
+											onChange={(e) => {
+												const num = Number.parseInt(e.target.value, 10)
+												if (!Number.isNaN(num) && num > 0) {
+													const unit = fromSeconds(rule.dwellSeconds ?? 10).unit
+													updateRule(rule.id, {
+														dwellSeconds: Math.max(1, toSeconds(num, unit)),
+													})
+												}
+											}}
+											className="h-7 w-16 text-xs text-center"
+										/>
+										<Select
+											value={fromSeconds(rule.dwellSeconds ?? 10).unit}
+											onValueChange={(newUnit) => {
+												const { value } = fromSeconds(rule.dwellSeconds ?? 10)
+												updateRule(rule.id, {
+													dwellSeconds: Math.max(
+														1,
+														toSeconds(value, newUnit as DedupUnit),
+													),
+												})
+											}}
+										>
+											<SelectTrigger className="h-7 w-[76px] text-xs">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="seconds">
+													{t('sites.unitSeconds')}
+												</SelectItem>
+												<SelectItem value="minutes">
+													{t('sites.unitMinutes')}
+												</SelectItem>
+											</SelectContent>
+										</Select>
+										<span className="text-xs whitespace-nowrap">
+											{t('sites.dwellSuffix')}
+										</span>
+									</div>
 								)}
 
 								{/* Refetch — only for focused mode */}

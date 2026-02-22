@@ -26,6 +26,8 @@
 	"sites.unitSeconds": "秒",
 	"sites.unitMinutes": "分钟",
 	"sites.unitHours": "小时",
+	"sites.dwellPrefix": "聚焦",
+	"sites.dwellSuffix": "后捕获",
 	"sites.refetch": "定时刷新",
 	"sites.dedup": "去重",
 

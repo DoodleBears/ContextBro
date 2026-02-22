@@ -6,15 +6,13 @@ import { appendSendHistory, getLastSharedAt, getSiteRules, setLastSharedAt } fro
 import { compileTemplate } from '@/lib/template-engine/compiler'
 import type { ContextBroTemplate, Endpoint, SiteRule } from '@/lib/types'
 
-const DWELL_TIME_MS = 10_000 // 10 seconds
-
 interface FocusedModeDeps {
 	ensureContentScript: (tabId: number) => Promise<void>
 	getEndpoints: () => Promise<Endpoint[]>
 	getTemplate: (templateId?: string) => Promise<ContextBroTemplate>
 }
 
-let dwellTimer: ReturnType<typeof setTimeout> | null = null
+let dwellTimers: ReturnType<typeof setTimeout>[] = []
 const refetchTimers = new Map<string, ReturnType<typeof setInterval>>()
 
 /**
@@ -53,10 +51,10 @@ export function initFocusedMode(deps: FocusedModeDeps): void {
 }
 
 function cancelDwell(): void {
-	if (dwellTimer !== null) {
-		clearTimeout(dwellTimer)
-		dwellTimer = null
+	for (const timer of dwellTimers) {
+		clearTimeout(timer)
 	}
+	dwellTimers = []
 }
 
 function cancelRefetch(): void {
@@ -125,26 +123,37 @@ async function handleTabFocus(tabId: number, deps: FocusedModeDeps): Promise<voi
 
 	if (matchingRules.length === 0) return
 
-	// Start dwell timer
+	// Group matching rules by dwell time
 	const capturedTabId = tabId
 	const capturedUrl = tab.url
 
-	dwellTimer = setTimeout(async () => {
-		// Verify the tab is still active after dwell time
-		try {
-			const [currentTab] = await browser.tabs.query({ active: true, currentWindow: true })
-			if (!currentTab || currentTab.id !== capturedTabId) return
-		} catch {
-			return
-		}
+	const byDwell = new Map<number, SiteRule[]>()
+	for (const rule of matchingRules) {
+		const dwell = rule.dwellSeconds ?? 10
+		const group = byDwell.get(dwell) || []
+		group.push(rule)
+		byDwell.set(dwell, group)
+	}
 
-		await extractForFocusedRules(capturedTabId, capturedUrl, matchingRules, deps)
+	for (const [dwellSec, rules] of byDwell) {
+		const timer = setTimeout(async () => {
+			// Verify the tab is still active after dwell time
+			try {
+				const [currentTab] = await browser.tabs.query({ active: true, currentWindow: true })
+				if (!currentTab || currentTab.id !== capturedTabId) return
+			} catch {
+				return
+			}
 
-		// Start refetch timers for rules that have it enabled
-		for (const rule of matchingRules) {
-			startRefetch(capturedTabId, capturedUrl, rule, deps)
-		}
-	}, DWELL_TIME_MS)
+			await extractForFocusedRules(capturedTabId, capturedUrl, rules, deps)
+
+			// Start refetch timers for rules that have it enabled
+			for (const rule of rules) {
+				startRefetch(capturedTabId, capturedUrl, rule, deps)
+			}
+		}, dwellSec * 1000)
+		dwellTimers.push(timer)
+	}
 }
 
 async function extractForFocusedRules(

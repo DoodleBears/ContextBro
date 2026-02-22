@@ -193,3 +193,25 @@ export async function migrateV5ToV6(): Promise<boolean> {
 	console.debug(`[migration] V5→V6: added refetch fields to ${updatedRules.length} rules`)
 	return true
 }
+
+/**
+ * Migrate from v6 to v7:
+ * - Add `dwellSeconds` to SiteRule (default 10 — preserves existing behavior)
+ * Idempotent — skips if rules already have `dwellSeconds`.
+ */
+export async function migrateV6ToV7(): Promise<boolean> {
+	const result = await browser.storage.local.get(['siteRules'])
+	const siteRules = (result.siteRules as Record<string, unknown>[]) || []
+
+	if (siteRules.length === 0) return false
+	if (siteRules[0].dwellSeconds !== undefined) return false
+
+	const updatedRules = siteRules.map((r) => ({
+		...r,
+		dwellSeconds: 10,
+	}))
+
+	await browser.storage.local.set({ siteRules: updatedRules })
+	console.debug(`[migration] V6→V7: added dwellSeconds to ${updatedRules.length} rules`)
+	return true
+}
