@@ -13,7 +13,7 @@ export default defineContentScript({
 		let root: ReturnType<typeof createRoot> | null = null
 		let currentStreamInfo: StreamInfo | null = null
 		let currentEndpointNames: string[] = []
-		let currentStats = { totalMessages: 0, totalBatches: 0 }
+		let currentStats = { totalMessages: 0, totalBatches: 0, totalTranscripts: 0 }
 		let dismissed = false
 
 		const ui = await createShadowRootUi(ctx, {
@@ -63,7 +63,7 @@ export default defineContentScript({
 
 			currentStreamInfo = streamInfo
 			currentEndpointNames = endpointNames
-			currentStats = { totalMessages: 0, totalBatches: 0 }
+			currentStats = { totalMessages: 0, totalBatches: 0, totalTranscripts: 0 }
 
 			ui.remove()
 			ui.mount()
@@ -77,9 +77,14 @@ export default defineContentScript({
 			render('enter')
 		}
 
-		function updateStats(totalMessages: number, totalBatches: number, streamInfo?: StreamInfo) {
+		function updateStats(
+			totalMessages: number,
+			totalBatches: number,
+			totalTranscripts: number,
+			streamInfo?: StreamInfo,
+		) {
 			if (dismissed) return
-			currentStats = { totalMessages, totalBatches }
+			currentStats = { totalMessages, totalBatches, totalTranscripts }
 			// Keep streamInfo fresh (channel name may arrive late)
 			if (streamInfo?.channelName) currentStreamInfo = streamInfo
 			render('active')
@@ -107,6 +112,7 @@ export default defineContentScript({
 				updateStats(
 					message.totalMessages as number,
 					message.totalBatches as number,
+					(message.totalTranscripts as number) || 0,
 					message.streamInfo as StreamInfo | undefined,
 				)
 			}
@@ -125,8 +131,12 @@ export default defineContentScript({
 					state.streamInfo as StreamInfo,
 					(state.endpointNames as string[]) || [],
 				)
-				if (state.totalMessages > 0 || state.totalBatches > 0) {
-					updateStats(state.totalMessages as number, state.totalBatches as number)
+				if (state.totalMessages > 0 || state.totalBatches > 0 || state.totalTranscripts > 0) {
+					updateStats(
+						state.totalMessages as number,
+						state.totalBatches as number,
+						(state.totalTranscripts as number) || 0,
+					)
 				}
 			}
 		} catch (err) {
@@ -179,7 +189,7 @@ function TwitchIcon({ size = 14 }: { size?: number }) {
 interface IndicatorProps {
 	streamInfo: StreamInfo
 	endpointNames: string[]
-	stats: { totalMessages: number; totalBatches: number }
+	stats: { totalMessages: number; totalBatches: number; totalTranscripts: number }
 	phase: 'enter' | 'active' | 'exit'
 	onDismiss: () => void
 	onExitDone: () => void
@@ -286,6 +296,8 @@ function StreamIndicator({
 			<span style={{ color: c.muted, fontSize: '11px' }}>{stats.totalMessages} msgs</span>
 			<span style={{ color: c.muted, opacity: 0.4 }}>{'·'}</span>
 			<span style={{ color: c.muted, fontSize: '11px' }}>{stats.totalBatches} batches</span>
+			<span style={{ color: c.muted, opacity: 0.4 }}>{'·'}</span>
+			<span style={{ color: c.muted, fontSize: '11px' }}>{stats.totalTranscripts} transcripts</span>
 			<button
 				type="button"
 				onClick={onDismiss}

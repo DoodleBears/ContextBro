@@ -222,6 +222,7 @@ export default defineBackground(() => {
 						endpointNames: adapter.endpointNames,
 						totalMessages: adapter.totalMessages,
 						totalBatches: adapter.totalBatches,
+						totalTranscripts: adapter.totalTranscripts,
 					})
 				} else {
 					sendResponse({ active: false })
@@ -428,6 +429,7 @@ interface ActiveAdapter {
 	endpointNames: string[]
 	totalMessages: number
 	totalBatches: number
+	totalTranscripts: number
 }
 
 const activeAdapters = new Map<number, ActiveAdapter>()
@@ -454,12 +456,13 @@ browser.tabs.onActivated.addListener(({ tabId }) => {
 				endpointNames: adapter.endpointNames,
 			})
 			.catch(() => {})
-		if (adapter.totalMessages > 0 || adapter.totalBatches > 0) {
+		if (adapter.totalMessages > 0 || adapter.totalBatches > 0 || adapter.totalTranscripts > 0) {
 			browser.tabs
 				.sendMessage(tabId, {
 					action: 'updateStreamIndicator',
 					totalMessages: adapter.totalMessages,
 					totalBatches: adapter.totalBatches,
+					totalTranscripts: adapter.totalTranscripts,
 					streamInfo: adapter.streamInfo,
 				})
 				.catch(() => {})
@@ -531,6 +534,7 @@ async function handleAdapterActive(
 		endpointNames: names,
 		totalMessages: 0,
 		totalBatches: 0,
+		totalTranscripts: 0,
 	})
 	updateBadge()
 	console.debug(`[adapter] ${platform} active (tab ${tabId}):`, streamInfo?.title || 'unknown')
@@ -597,6 +601,7 @@ async function handleChatBatch(batch: ChatBatch, tabId: number) {
 						action: 'updateStreamIndicator',
 						totalMessages: adapter.totalMessages,
 						totalBatches: adapter.totalBatches,
+						totalTranscripts: adapter.totalTranscripts,
 						streamInfo: batch.streamInfo,
 					})
 					.catch(() => {})
@@ -674,6 +679,7 @@ async function handleChatBatch(batch: ChatBatch, tabId: number) {
 					action: 'updateStreamIndicator',
 					totalMessages: adapter.totalMessages,
 					totalBatches: adapter.totalBatches,
+					totalTranscripts: adapter.totalTranscripts,
 					streamInfo: batch.streamInfo,
 				})
 				.catch(() => {})
@@ -703,7 +709,23 @@ async function handleTranscript(chunk: TranscriptChunk, tabId: number) {
 			(config.endpointIds?.length ?? 0) > 0
 				? allEndpoints.filter((e) => e.enabled && config.endpointIds.includes(e.id))
 				: []
-		if (targets.length === 0) return { ok: false, error: 'No endpoint selected' }
+		if (targets.length === 0) {
+			// Still update stats even though we're not sending
+			const adapter = activeAdapters.get(tabId)
+			if (adapter) {
+				adapter.totalTranscripts += 1
+				browser.tabs
+					.sendMessage(tabId, {
+						action: 'updateStreamIndicator',
+						totalMessages: adapter.totalMessages,
+						totalBatches: adapter.totalBatches,
+						totalTranscripts: adapter.totalTranscripts,
+						streamInfo: adapter.streamInfo,
+					})
+					.catch(() => {})
+			}
+			return { ok: false, error: 'No endpoint selected' }
+		}
 
 		const streamUrl = ''
 		const variables: Record<string, string | number | boolean> = {
@@ -736,6 +758,21 @@ async function handleTranscript(chunk: TranscriptChunk, tabId: number) {
 				status: r.status === 'fulfilled' ? r.value.status : 0,
 				statusText: r.status === 'fulfilled' ? r.value.statusText : String(r.reason),
 			}).catch(() => {})
+		}
+
+		// Update stats and relay to stream indicator
+		const adapter = activeAdapters.get(tabId)
+		if (adapter) {
+			adapter.totalTranscripts += 1
+			browser.tabs
+				.sendMessage(tabId, {
+					action: 'updateStreamIndicator',
+					totalMessages: adapter.totalMessages,
+					totalBatches: adapter.totalBatches,
+					totalTranscripts: adapter.totalTranscripts,
+					streamInfo: adapter.streamInfo,
+				})
+				.catch(() => {})
 		}
 
 		const firstResult = results[0]

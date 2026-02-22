@@ -400,7 +400,12 @@ export class YouTubeAdapter extends BaseAdapter {
 		const currentTime = video.currentTime
 		const duration = video.duration
 
-		// Only emit if time has progressed past threshold
+		// Detect seek backward — reset so we can emit unsent segments from the new position
+		if (currentTime < this.lastTranscriptTime - 1) {
+			this.lastTranscriptTime = currentTime
+		}
+
+		// Only emit if time has progressed past threshold (also gates paused state)
 		if (currentTime <= this.lastTranscriptTime + this.config.transcript.progressThresholdS) return
 		this.lastTranscriptTime = currentTime
 
