@@ -50,17 +50,18 @@ export async function updateGlobalSettings(settings: GlobalSettings): Promise<vo
 }
 
 /**
- * Create or update the Chrome alarm based on the minimum interval across all active auto-share rules.
+ * Create or update the Chrome alarm based on the minimum interval across active any_tab rules.
+ * Focused-mode rules are event-driven and don't need alarms.
  */
 async function syncAlarm(rules: SiteRule[]): Promise<void> {
-	const activeRules = rules.filter((r) => r.enabled && r.autoShare)
+	const anyTabRules = rules.filter((r) => r.enabled && r.autoShare && r.scheduleMode === 'any_tab')
 
-	if (activeRules.length === 0) {
+	if (anyTabRules.length === 0) {
 		await browser.alarms.clear(ALARM_NAME)
 		return
 	}
 
-	const minInterval = Math.max(1, Math.min(...activeRules.map((r) => r.intervalMinutes)))
+	const minInterval = Math.max(1, Math.min(...anyTabRules.map((r) => r.intervalMinutes)))
 
 	await browser.alarms.clear(ALARM_NAME)
 	browser.alarms.create(ALARM_NAME, {
@@ -79,16 +80,14 @@ async function runScheduledExtraction(deps: {
 	getTemplate: (templateId?: string) => Promise<ContextBroTemplate>
 }): Promise<void> {
 	const rules = await getSiteRules()
-	const activeRules = rules.filter((r) => r.enabled && r.autoShare)
+	const activeRules = rules.filter((r) => r.enabled && r.autoShare && r.scheduleMode === 'any_tab')
 	if (activeRules.length === 0) return
 
 	const allEndpoints = await deps.getEndpoints()
 	const lastSharedAt = await getLastSharedAt()
 	const now = Date.now()
 
-	// Query tabs once for both modes
 	const allTabs = await browser.tabs.query({})
-	const [focusedTab] = await browser.tabs.query({ active: true, currentWindow: true })
 
 	let lastSharedUpdated = false
 	const processedTabs = new Set<string>() // track rule+tab combos to avoid duplicates
@@ -98,9 +97,7 @@ async function runScheduledExtraction(deps: {
 		const lastTime = lastSharedAt[rule.pattern] || 0
 		if (now - lastTime < rule.intervalMinutes * 60_000) continue
 
-		// Determine candidate tabs based on per-rule scheduleMode
-		const candidateTabs =
-			rule.scheduleMode === 'focused' ? (focusedTab ? [focusedTab] : []) : allTabs
+		const candidateTabs = allTabs
 
 		// Resolve target endpoints
 		const targetEndpoints =
@@ -138,7 +135,7 @@ async function runScheduledExtraction(deps: {
 
 				// Dedup — skip if page content hasn't changed
 				const contentKey = response.content || response.fullHtml || ''
-				const changed = await hasContentChanged(tab.url, contentKey)
+				const changed = await hasContentChanged(tab.url, contentKey, rule.dedupWindowMinutes)
 				if (!changed) {
 					console.debug(`[scheduler] Skipping unchanged: ${tab.url}`)
 					continue

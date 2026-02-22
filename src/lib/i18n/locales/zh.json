@@ -77,10 +77,24 @@
 	"common.done": "完成",
 	"common.clone": "复制",
 
+	"interval.1min": "1 分钟",
+	"interval.2min": "2 分钟",
 	"interval.5min": "5 分钟",
 	"interval.10min": "10 分钟",
 	"interval.15min": "15 分钟",
 	"interval.30min": "30 分钟",
 	"interval.1hour": "1 小时",
-	"interval.2hours": "2 小时"
+	"interval.2hours": "2 小时",
+
+	"dedup.disabled": "不去重",
+	"dedup.5min": "去重 5分钟",
+	"dedup.10min": "去重 10分钟",
+	"dedup.15min": "去重 15分钟",
+	"dedup.30min": "去重 30分钟",
+	"dedup.1hour": "去重 1小时",
+
+	"general.theme": "主题",
+	"general.themeSystem": "跟随系统",
+	"general.themeLight": "浅色",
+	"general.themeDark": "深色"
 }

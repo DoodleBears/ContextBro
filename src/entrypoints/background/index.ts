@@ -2,7 +2,8 @@ import type { ChatBatch, StreamInfo, TranscriptChunk } from '@/lib/adapters/type
 import { matchesSiteRules } from '@/lib/allowlist'
 import { sendToEndpoint } from '@/lib/api/send'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
-import { migrateV1ToV2, migrateV2ToV3 } from '@/lib/migration'
+import { initFocusedMode } from '@/lib/focused-mode'
+import { migrateV1ToV2, migrateV2ToV3, migrateV3ToV4 } from '@/lib/migration'
 import { initScheduler, updateGlobalSettings, updateSiteRules } from '@/lib/scheduler'
 import { getEndpoints as getEndpointsFromStorage, getSiteRules } from '@/lib/storage'
 import { compileTemplate } from '@/lib/template-engine/compiler'
@@ -35,10 +36,21 @@ export default defineBackground(() => {
 		})
 		.then((migrated) => {
 			if (migrated) console.debug('[background] V2→V3 migration completed')
+			return migrateV3ToV4()
+		})
+		.then((migrated) => {
+			if (migrated) console.debug('[background] V3→V4 migration completed')
 		})
 
 	// Initialize the scheduled extraction system
 	initScheduler({
+		ensureContentScript,
+		getEndpoints,
+		getTemplate,
+	})
+
+	// Initialize event-driven focused-mode extraction
+	initFocusedMode({
 		ensureContentScript,
 		getEndpoints,
 		getTemplate,

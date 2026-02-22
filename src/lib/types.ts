@@ -31,10 +31,12 @@ export interface SiteRule {
 	autoShare: boolean
 	intervalMinutes: number
 	scheduleMode: 'focused' | 'any_tab'
+	dedupWindowMinutes: number
 }
 
 export interface GlobalSettings {
 	locale: 'en' | 'zh' | 'ja'
+	theme: 'system' | 'light' | 'dark'
 }
 
 /** @deprecated Use SiteRule instead */

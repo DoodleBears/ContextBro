@@ -77,10 +77,24 @@
 	"common.done": "Done",
 	"common.clone": "Clone",
 
+	"interval.1min": "1 min",
+	"interval.2min": "2 min",
 	"interval.5min": "5 min",
 	"interval.10min": "10 min",
 	"interval.15min": "15 min",
 	"interval.30min": "30 min",
 	"interval.1hour": "1 hour",
-	"interval.2hours": "2 hours"
+	"interval.2hours": "2 hours",
+
+	"dedup.disabled": "No dedup",
+	"dedup.5min": "Dedup 5m",
+	"dedup.10min": "Dedup 10m",
+	"dedup.15min": "Dedup 15m",
+	"dedup.30min": "Dedup 30m",
+	"dedup.1hour": "Dedup 1h",
+
+	"general.theme": "Theme",
+	"general.themeSystem": "System",
+	"general.themeLight": "Light",
+	"general.themeDark": "Dark"
 }

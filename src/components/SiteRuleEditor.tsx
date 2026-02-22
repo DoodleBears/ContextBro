@@ -18,12 +18,23 @@ import { useLocale } from '@/lib/i18n'
 import type { ContextBroTemplate, Endpoint, SiteRule } from '@/lib/types'
 
 const INTERVAL_OPTIONS = [
+	{ value: 1, key: 'interval.1min' },
+	{ value: 2, key: 'interval.2min' },
 	{ value: 5, key: 'interval.5min' },
 	{ value: 10, key: 'interval.10min' },
 	{ value: 15, key: 'interval.15min' },
 	{ value: 30, key: 'interval.30min' },
 	{ value: 60, key: 'interval.1hour' },
 	{ value: 120, key: 'interval.2hours' },
+]
+
+const DEDUP_WINDOW_OPTIONS = [
+	{ value: 0, key: 'dedup.disabled' },
+	{ value: 5, key: 'dedup.5min' },
+	{ value: 10, key: 'dedup.10min' },
+	{ value: 15, key: 'dedup.15min' },
+	{ value: 30, key: 'dedup.30min' },
+	{ value: 60, key: 'dedup.1hour' },
 ]
 
 interface Props {
@@ -62,6 +73,7 @@ export function SiteRuleEditor({
 				autoShare: false,
 				intervalMinutes: 15,
 				scheduleMode: 'focused',
+				dedupWindowMinutes: 15,
 			},
 		])
 		setNewPattern('')
@@ -125,6 +137,7 @@ export function SiteRuleEditor({
 				autoShare: false,
 				intervalMinutes: 15,
 				scheduleMode: 'focused' as const,
+				dedupWindowMinutes: 15,
 			}))
 
 		if (newRules.length > 0) {
@@ -261,8 +274,8 @@ export function SiteRuleEditor({
 								</div>
 							</div>
 
-							{/* Row 3: Auto-share + Schedule mode + Interval */}
-							<div className="flex items-center gap-4 pt-1 border-t border-border/50">
+							{/* Row 3: Auto-share + Schedule mode + Interval + Dedup */}
+							<div className="flex flex-wrap items-center gap-3 pt-1 border-t border-border/50">
 								<div className="flex items-center gap-2">
 									<Switch
 										checked={rule.autoShare}
@@ -286,15 +299,36 @@ export function SiteRuleEditor({
 												<SelectItem value="any_tab">{t('sites.anyTab')}</SelectItem>
 											</SelectContent>
 										</Select>
+
+										{/* Interval — only for any_tab mode */}
+										{rule.scheduleMode === 'any_tab' && (
+											<Select
+												value={String(rule.intervalMinutes)}
+												onValueChange={(v) => updateRule(rule.id, { intervalMinutes: Number(v) })}
+											>
+												<SelectTrigger className="h-7 w-[100px] text-xs">
+													<SelectValue />
+												</SelectTrigger>
+												<SelectContent>
+													{INTERVAL_OPTIONS.map((opt) => (
+														<SelectItem key={opt.value} value={String(opt.value)}>
+															{t(opt.key)}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										)}
+
+										{/* Dedup window — both modes */}
 										<Select
-											value={String(rule.intervalMinutes)}
-											onValueChange={(v) => updateRule(rule.id, { intervalMinutes: Number(v) })}
+											value={String(rule.dedupWindowMinutes ?? 15)}
+											onValueChange={(v) => updateRule(rule.id, { dedupWindowMinutes: Number(v) })}
 										>
-											<SelectTrigger className="h-7 w-[100px] text-xs">
+											<SelectTrigger className="h-7 w-[120px] text-xs">
 												<SelectValue />
 											</SelectTrigger>
 											<SelectContent>
-												{INTERVAL_OPTIONS.map((opt) => (
+												{DEDUP_WINDOW_OPTIONS.map((opt) => (
 													<SelectItem key={opt.value} value={String(opt.value)}>
 														{t(opt.key)}
 													</SelectItem>

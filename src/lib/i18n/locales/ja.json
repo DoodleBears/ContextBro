@@ -77,10 +77,24 @@
 	"common.done": "完了",
 	"common.clone": "複製",
 
+	"interval.1min": "1分",
+	"interval.2min": "2分",
 	"interval.5min": "5分",
 	"interval.10min": "10分",
 	"interval.15min": "15分",
 	"interval.30min": "30分",
 	"interval.1hour": "1時間",
-	"interval.2hours": "2時間"
+	"interval.2hours": "2時間",
+
+	"dedup.disabled": "重複排除なし",
+	"dedup.5min": "重複排除 5分",
+	"dedup.10min": "重複排除 10分",
+	"dedup.15min": "重複排除 15分",
+	"dedup.30min": "重複排除 30分",
+	"dedup.1hour": "重複排除 1時間",
+
+	"general.theme": "テーマ",
+	"general.themeSystem": "システム",
+	"general.themeLight": "ライト",
+	"general.themeDark": "ダーク"
 }

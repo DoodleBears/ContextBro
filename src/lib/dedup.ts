@@ -1,5 +1,12 @@
 const STORAGE_KEY = 'contextBroContentHashes'
 
+interface DedupEntry {
+	hash: string
+	sentAt: number
+}
+
+type DedupStore = Record<string, DedupEntry>
+
 /**
  * Compute SHA-256 hash of content string.
  */
@@ -11,20 +18,50 @@ async function sha256(content: string): Promise<string> {
 }
 
 /**
- * Check if content for a URL has changed since last extraction.
- * Returns true if the content is new or changed (should be sent).
- * Returns false if it's a duplicate (should be skipped).
+ * Normalize stored values: if a value is a plain string (v3 format),
+ * convert it to { hash, sentAt: 0 } for backward compatibility.
  */
-export async function hasContentChanged(url: string, content: string): Promise<boolean> {
+function normalizeStore(raw: Record<string, unknown>): DedupStore {
+	const store: DedupStore = {}
+	for (const [url, value] of Object.entries(raw)) {
+		if (typeof value === 'string') {
+			store[url] = { hash: value, sentAt: 0 }
+		} else if (value && typeof value === 'object' && 'hash' in value) {
+			store[url] = value as DedupEntry
+		}
+	}
+	return store
+}
+
+/**
+ * Check if content for a URL has changed or the dedup window has expired.
+ * @param dedupWindowMinutes - 0 means dedup disabled (always send).
+ * Returns true if the content should be sent.
+ */
+export async function hasContentChanged(
+	url: string,
+	content: string,
+	dedupWindowMinutes = 15,
+): Promise<boolean> {
+	// Dedup disabled — always send
+	if (dedupWindowMinutes <= 0) return true
+
 	const hash = await sha256(content)
 	const stored = await browser.storage.local.get(STORAGE_KEY)
-	const hashes = (stored[STORAGE_KEY] || {}) as Record<string, string>
+	const hashes = normalizeStore((stored[STORAGE_KEY] || {}) as Record<string, unknown>)
+	const now = Date.now()
 
-	if (hashes[url] === hash) {
-		return false
+	const existing = hashes[url]
+	if (existing) {
+		const windowMs = dedupWindowMinutes * 60_000
+		const withinWindow = now - existing.sentAt < windowMs
+		if (existing.hash === hash && withinWindow) {
+			return false // same content, within window → skip
+		}
 	}
 
-	hashes[url] = hash
+	// Update hash and sentAt
+	hashes[url] = { hash, sentAt: now }
 	await browser.storage.local.set({ [STORAGE_KEY]: hashes })
 	return true
 }

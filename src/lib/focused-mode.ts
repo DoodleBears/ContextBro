@@ -1,0 +1,171 @@
+import { matchesPattern } from '@/lib/allowlist'
+import { sendToEndpoint } from '@/lib/api/send'
+import { buildVariables, extractPageContent } from '@/lib/content-extractor'
+import { hasContentChanged } from '@/lib/dedup'
+import { getLastSharedAt, getSiteRules, setLastSharedAt } from '@/lib/storage'
+import { compileTemplate } from '@/lib/template-engine/compiler'
+import type { ContextBroTemplate, Endpoint, SiteRule } from '@/lib/types'
+
+const DWELL_TIME_MS = 10_000 // 10 seconds
+
+interface FocusedModeDeps {
+	ensureContentScript: (tabId: number) => Promise<void>
+	getEndpoints: () => Promise<Endpoint[]>
+	getTemplate: (templateId?: string) => Promise<ContextBroTemplate>
+}
+
+let dwellTimer: ReturnType<typeof setTimeout> | null = null
+
+/**
+ * Initialize focused-mode event listeners.
+ * Call once from the background service worker.
+ */
+export function initFocusedMode(deps: FocusedModeDeps): void {
+	// Tab activated (user switched tabs)
+	browser.tabs.onActivated.addListener((activeInfo) => {
+		handleTabFocus(activeInfo.tabId, deps)
+	})
+
+	// URL changed in the same tab (navigation completed)
+	browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+		if (changeInfo.status === 'complete' && tab.active) {
+			handleTabFocus(tabId, deps)
+		}
+	})
+
+	// Window focus changed
+	browser.windows.onFocusChanged.addListener(async (windowId) => {
+		if (windowId === browser.windows.WINDOW_ID_NONE) {
+			cancelDwell()
+			return
+		}
+		try {
+			const [tab] = await browser.tabs.query({ active: true, windowId })
+			if (tab?.id) {
+				handleTabFocus(tab.id, deps)
+			}
+		} catch {
+			// Window may have been closed
+		}
+	})
+}
+
+function cancelDwell(): void {
+	if (dwellTimer !== null) {
+		clearTimeout(dwellTimer)
+		dwellTimer = null
+	}
+}
+
+async function handleTabFocus(tabId: number, deps: FocusedModeDeps): Promise<void> {
+	// Cancel any pending dwell timer
+	cancelDwell()
+
+	// Get tab info — use query to get full tab object with url
+	const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
+	if (!tab || tab.id !== tabId) return
+
+	if (!tab.url || (!tab.url.startsWith('http://') && !tab.url.startsWith('https://'))) {
+		return
+	}
+
+	let hostname: string
+	try {
+		hostname = new URL(tab.url).hostname
+	} catch {
+		return
+	}
+
+	// Find matching focused-mode rules
+	const rules = await getSiteRules()
+	const matchingRules = rules.filter(
+		(r) =>
+			r.enabled &&
+			r.autoShare &&
+			r.scheduleMode === 'focused' &&
+			matchesPattern(hostname, r.pattern),
+	)
+
+	if (matchingRules.length === 0) return
+
+	// Start dwell timer
+	const capturedTabId = tabId
+	const capturedUrl = tab.url
+
+	dwellTimer = setTimeout(async () => {
+		// Verify the tab is still active after dwell time
+		try {
+			const [currentTab] = await browser.tabs.query({ active: true, currentWindow: true })
+			if (!currentTab || currentTab.id !== capturedTabId) return
+		} catch {
+			return
+		}
+
+		await extractForFocusedRules(capturedTabId, capturedUrl, matchingRules, deps)
+	}, DWELL_TIME_MS)
+}
+
+async function extractForFocusedRules(
+	tabId: number,
+	url: string,
+	rules: SiteRule[],
+	deps: FocusedModeDeps,
+): Promise<void> {
+	const allEndpoints = await deps.getEndpoints()
+	const lastSharedAt = await getLastSharedAt()
+	const now = Date.now()
+	let lastSharedUpdated = false
+
+	for (const rule of rules) {
+		const targetEndpoints =
+			rule.endpointIds.length > 0
+				? allEndpoints.filter((e) => e.enabled && rule.endpointIds.includes(e.id))
+				: allEndpoints.filter((e) => e.enabled).slice(0, 1)
+
+		if (targetEndpoints.length === 0) continue
+
+		try {
+			await deps.ensureContentScript(tabId)
+			const response = await extractPageContent(tabId)
+			if (!response) continue
+
+			const contentKey = response.content || response.fullHtml || ''
+			const changed = await hasContentChanged(url, contentKey, rule.dedupWindowMinutes)
+			if (!changed) {
+				console.debug(`[focused-mode] Skipping unchanged: ${url}`)
+				continue
+			}
+
+			const variables = buildVariables(response, url)
+			const template = await deps.getTemplate(rule.templateId)
+			const compiled = await compileTemplate(tabId, template.contentFormat, variables, url)
+
+			const results = await Promise.allSettled(
+				targetEndpoints.map((ep) => sendToEndpoint(ep, compiled)),
+			)
+
+			for (let i = 0; i < results.length; i++) {
+				const r = results[i]
+				if (r.status === 'fulfilled' && r.value.ok) {
+					console.debug(`[focused-mode] Sent ${url} → ${targetEndpoints[i].name}`)
+				} else {
+					const reason =
+						r.status === 'rejected' ? r.reason : `${r.value.status} ${r.value.statusText}`
+					console.error(`[focused-mode] Failed ${url} → ${targetEndpoints[i].name}: ${reason}`)
+				}
+			}
+
+			const anySuccess = results.some((r) => r.status === 'fulfilled' && r.value.ok)
+			if (anySuccess) {
+				lastSharedAt[rule.pattern] = now
+				lastSharedUpdated = true
+			}
+		} catch (error) {
+			console.error(`[focused-mode] Error processing ${url}:`, error)
+		}
+	}
+
+	if (lastSharedUpdated) {
+		await setLastSharedAt(lastSharedAt)
+	}
+}

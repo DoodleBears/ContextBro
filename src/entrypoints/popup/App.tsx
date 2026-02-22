@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { matchesSiteRules } from '@/lib/allowlist'
 import { useLocale } from '@/lib/i18n'
-import type { ContextBroTemplate, Endpoint, SiteRule } from '@/lib/types'
+import { applyTheme, watchSystemTheme } from '@/lib/theme'
+import type { ContextBroTemplate, Endpoint, GlobalSettings, SiteRule } from '@/lib/types'
 
 interface PageInfo {
 	title: string
@@ -58,6 +59,22 @@ export default function App() {
 		},
 		[selectedTemplate],
 	)
+
+	// Apply theme on mount
+	useEffect(() => {
+		let cleanup: (() => void) | undefined
+
+		browser.storage.local.get('globalSettings').then((result) => {
+			const settings = result.globalSettings as GlobalSettings | undefined
+			const theme = settings?.theme || 'system'
+			applyTheme(theme)
+			cleanup = watchSystemTheme(() => {
+				if (theme === 'system') applyTheme('system')
+			})
+		})
+
+		return () => cleanup?.()
+	}, [])
 
 	// Load settings and page data on mount
 	useEffect(() => {

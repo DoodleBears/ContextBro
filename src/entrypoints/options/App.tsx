@@ -5,13 +5,16 @@ import { EndpointEditor } from '@/components/EndpointEditor'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { SiteRuleEditor } from '@/components/SiteRuleEditor'
 import { TemplateEditor } from '@/components/TemplateEditor'
+import { ThemeSwitcher } from '@/components/ThemeSwitcher'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useLocale } from '@/lib/i18n'
+import { applyTheme, type Theme, watchSystemTheme } from '@/lib/theme'
 import type { ContextBroTemplate, Endpoint, GlobalSettings, SiteRule } from '@/lib/types'
 
 const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
 	locale: 'en',
+	theme: 'system',
 }
 
 export default function App() {
@@ -40,6 +43,22 @@ export default function App() {
 		loadSettings()
 	}, [loadSettings])
 
+	// Apply theme and watch for system changes
+	useEffect(() => {
+		applyTheme(globalSettings.theme)
+		const cleanup = watchSystemTheme(() => {
+			if (globalSettings.theme === 'system') {
+				applyTheme('system')
+			}
+		})
+		return cleanup
+	}, [globalSettings.theme])
+
+	function handleThemeChange(theme: Theme) {
+		setGlobalSettings((prev) => ({ ...prev, theme }))
+		applyTheme(theme)
+	}
+
 	async function save() {
 		await browser.storage.local.set({ siteRules, endpoints, templates, globalSettings })
 
@@ -56,7 +75,10 @@ export default function App() {
 			{/* Header */}
 			<div className="mb-6 flex items-center justify-between">
 				<h1 className="text-xl font-bold text-foreground">{t('settings.title')}</h1>
-				<LanguageSwitcher />
+				<div className="flex items-center gap-2">
+					<ThemeSwitcher theme={globalSettings.theme} onChange={handleThemeChange} />
+					<LanguageSwitcher />
+				</div>
 			</div>
 
 			{/* Tabs */}

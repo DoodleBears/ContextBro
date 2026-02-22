@@ -28,10 +28,12 @@ export async function migrateV1ToV2(): Promise<boolean> {
 		autoShare: scheduleConfig.enabled,
 		intervalMinutes: scheduleConfig.intervalMinutes,
 		scheduleMode: newMode,
+		dedupWindowMinutes: 15,
 	}))
 
 	const globalSettings: GlobalSettings = {
 		locale: 'en',
+		theme: 'system',
 	}
 
 	await browser.storage.local.set({ siteRules, globalSettings })
@@ -71,4 +73,41 @@ export async function migrateV2ToV3(): Promise<boolean> {
 
 	console.debug(`[migration] V2→V3: moved scheduleMode to ${updatedRules.length} site rules`)
 	return true
+}
+
+/**
+ * Migrate from v3 to v4:
+ * - Add `dedupWindowMinutes` to SiteRule (default 15)
+ * - Add `theme` to GlobalSettings (default 'system')
+ * Idempotent — skips fields that already exist.
+ */
+export async function migrateV3ToV4(): Promise<boolean> {
+	const result = await browser.storage.local.get(['siteRules', 'globalSettings'])
+	const siteRules = (result.siteRules as Record<string, unknown>[]) || []
+	const globalSettings = (result.globalSettings as Record<string, unknown>) || {}
+
+	let migrated = false
+
+	// Add dedupWindowMinutes to rules that don't have it
+	if (siteRules.length > 0 && siteRules[0].dedupWindowMinutes === undefined) {
+		const updatedRules = siteRules.map((r) => ({
+			...r,
+			dedupWindowMinutes: 15,
+		}))
+		await browser.storage.local.set({ siteRules: updatedRules })
+		migrated = true
+	}
+
+	// Add theme to globalSettings if missing
+	if (globalSettings.theme === undefined) {
+		await browser.storage.local.set({
+			globalSettings: { ...globalSettings, theme: 'system' },
+		})
+		migrated = true
+	}
+
+	if (migrated) {
+		console.debug('[migration] V3→V4: added dedupWindowMinutes and theme')
+	}
+	return migrated
 }

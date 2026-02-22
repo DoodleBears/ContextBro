@@ -2,6 +2,7 @@ import type { ContextBroTemplate, Endpoint, GlobalSettings, SiteRule } from '@/l
 
 const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
 	locale: 'en',
+	theme: 'system',
 }
 
 export async function getSiteRules(): Promise<SiteRule[]> {
