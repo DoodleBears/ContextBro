@@ -15,6 +15,7 @@ interface FocusedModeDeps {
 }
 
 let dwellTimer: ReturnType<typeof setTimeout> | null = null
+const refetchTimers = new Map<string, ReturnType<typeof setInterval>>()
 
 /**
  * Initialize focused-mode event listeners.
@@ -37,6 +38,7 @@ export function initFocusedMode(deps: FocusedModeDeps): void {
 	browser.windows.onFocusChanged.addListener(async (windowId) => {
 		if (windowId === browser.windows.WINDOW_ID_NONE) {
 			cancelDwell()
+			cancelRefetch()
 			return
 		}
 		try {
@@ -57,9 +59,44 @@ function cancelDwell(): void {
 	}
 }
 
+function cancelRefetch(): void {
+	for (const timer of refetchTimers.values()) {
+		clearInterval(timer)
+	}
+	refetchTimers.clear()
+}
+
+function startRefetch(
+	tabId: number,
+	url: string,
+	rule: SiteRule,
+	deps: FocusedModeDeps,
+): void {
+	if (!rule.refetchEnabled || rule.refetchIntervalSeconds <= 0) return
+
+	const timer = setInterval(async () => {
+		// Verify the tab is still active
+		try {
+			const [currentTab] = await browser.tabs.query({ active: true, currentWindow: true })
+			if (!currentTab || currentTab.id !== tabId) {
+				cancelRefetch()
+				return
+			}
+		} catch {
+			cancelRefetch()
+			return
+		}
+
+		await extractForFocusedRules(tabId, url, [rule], deps)
+	}, rule.refetchIntervalSeconds * 1000)
+
+	refetchTimers.set(rule.id, timer)
+}
+
 async function handleTabFocus(tabId: number, deps: FocusedModeDeps): Promise<void> {
-	// Cancel any pending dwell timer
+	// Cancel any pending dwell timer and active refetch timers
 	cancelDwell()
+	cancelRefetch()
 
 	// Get tab info — use query to get full tab object with url
 	const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
@@ -102,6 +139,11 @@ async function handleTabFocus(tabId: number, deps: FocusedModeDeps): Promise<voi
 		}
 
 		await extractForFocusedRules(capturedTabId, capturedUrl, matchingRules, deps)
+
+		// Start refetch timers for rules that have it enabled
+		for (const rule of matchingRules) {
+			startRefetch(capturedTabId, capturedUrl, rule, deps)
+		}
 	}, DWELL_TIME_MS)
 }
 
