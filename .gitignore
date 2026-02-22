@@ -34,3 +34,6 @@ npm-debug.log*
 .cursor/ignore/*.txt
 .cursor/ignore/*.md
 !.cursor/ignore/.gitkeep
+
+# Cloudflare 
+.wrangler/

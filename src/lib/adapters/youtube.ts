@@ -17,6 +17,12 @@ const GIFT_TAG_NAMES = [
 	'YTD-SPONSORSHIPS-LIVE-CHAT-GIFT-REDEMPTION-ANNOUNCEMENT-RENDERER',
 ]
 
+interface CaptionSegment {
+	text: string
+	startMs: number
+	durationMs: number
+}
+
 export class YouTubeAdapter extends BaseAdapter {
 	platform = 'youtube' as const
 	private streamInfo: StreamInfo | null = null
@@ -25,6 +31,7 @@ export class YouTubeAdapter extends BaseAdapter {
 	private lastTranscriptTime = 0
 	private sentSegments = new Set<number>()
 	private isLive = false
+	private captionSegments: CaptionSegment[] = []
 
 	match(url: URL): boolean {
 		return (
@@ -54,6 +61,8 @@ export class YouTubeAdapter extends BaseAdapter {
 		await super.init()
 
 		if (this.config.youtube.transcript) {
+			// Fetch full captions upfront via timedtext API, then track progressively
+			await this.fetchCaptions()
 			this.startTranscriptTracking()
 		}
 	}
@@ -324,6 +333,58 @@ export class YouTubeAdapter extends BaseAdapter {
 		}
 	}
 
+	// ── Caption fetching (timedtext API) ──
+
+	private async fetchCaptions(): Promise<void> {
+		try {
+			// Re-fetch page HTML to extract captionTracks from ytInitialPlayerResponse
+			const html = await fetch(window.location.href).then((r) => r.text())
+			const marker = '"captionTracks":'
+			const start = html.indexOf(marker)
+			if (start === -1) {
+				console.debug('[youtube] No captionTracks found in page')
+				return
+			}
+
+			// Extract JSON array by matching brackets
+			let depth = 0
+			let i = start + marker.length
+			const begin = i
+			for (; i < html.length; i++) {
+				if (html[i] === '[') depth++
+				if (html[i] === ']') depth--
+				if (depth === 0) break
+			}
+
+			const tracks = JSON.parse(html.substring(begin, i + 1)) as {
+				baseUrl: string
+				languageCode: string
+			}[]
+			if (!tracks.length) return
+
+			// Fetch first available track in json3 format
+			const url = `${tracks[0].baseUrl}&fmt=json3`
+			const data = await fetch(url).then((r) => r.json())
+
+			this.captionSegments = (
+				data.events as { tStartMs?: number; dDurationMs?: number; segs?: { utf8: string }[] }[]
+			)
+				.filter((e) => e.segs)
+				.map((e) => ({
+					text: (e.segs ?? []).map((s) => s.utf8).join('').trim(),
+					startMs: e.tStartMs ?? 0,
+					durationMs: e.dDurationMs ?? 0,
+				}))
+				.filter((s) => s.text.length > 0)
+
+			console.debug(
+				`[youtube] Fetched ${this.captionSegments.length} caption segments (${tracks[0].languageCode})`,
+			)
+		} catch (e) {
+			console.debug('[youtube] Failed to fetch captions:', e)
+		}
+	}
+
 	// ── Progressive transcript tracking ──
 
 	private startTranscriptTracking(): void {
@@ -343,50 +404,48 @@ export class YouTubeAdapter extends BaseAdapter {
 		if (currentTime <= this.lastTranscriptTime + this.config.transcript.progressThresholdS) return
 		this.lastTranscriptTime = currentTime
 
-		// Try transcript panel DOM first, then fall back to textTracks (CC/subtitles)
 		const newText: string[] = []
 		let segStartTime = 0
 		let segEndTime = 0
+		const currentMs = currentTime * 1000
 
-		// Strategy 1: Transcript panel DOM (ytd-transcript-segment-renderer)
-		const segments = document.querySelectorAll('ytd-transcript-segment-renderer')
-		if (segments.length > 0) {
-			for (const seg of segments) {
-				const timeEl = seg.querySelector('.segment-timestamp')
-				const textEl = seg.querySelector('.segment-text')
-				if (!timeEl || !textEl) continue
+		// Strategy 1: Pre-fetched captions (most reliable for VODs)
+		if (this.captionSegments.length > 0) {
+			for (const seg of this.captionSegments) {
+				// Segments are sorted by time — skip past-window ones
+				if (seg.startMs + seg.durationMs < (currentMs - 10_000)) continue
+				// Stop when we reach segments ahead of playback
+				if (seg.startMs > currentMs) break
 
-				const segTime = this.parseTimestamp(timeEl.textContent?.trim() || '')
-				if (segTime < currentTime - 5 || segTime > currentTime + 5) continue
+				const roundedStart = Math.round(seg.startMs / 1000)
+				if (this.sentSegments.has(roundedStart)) continue
 
-				const roundedTime = Math.round(segTime)
-				if (this.sentSegments.has(roundedTime)) continue
+				this.sentSegments.add(roundedStart)
+				newText.push(seg.text)
 
-				this.sentSegments.add(roundedTime)
-				newText.push(textEl.textContent?.trim() || '')
-
-				if (!segStartTime || segTime < segStartTime) segStartTime = segTime
-				if (segTime > segEndTime) segEndTime = segTime
+				const startSec = seg.startMs / 1000
+				const endSec = (seg.startMs + seg.durationMs) / 1000
+				if (!segStartTime || startSec < segStartTime) segStartTime = startSec
+				if (endSec > segEndTime) segEndTime = endSec
 			}
 		}
 
-		// Strategy 2: video.textTracks API (CC/subtitles)
-		if (newText.length === 0 && video.textTracks) {
-			for (let i = 0; i < video.textTracks.length; i++) {
-				const track = video.textTracks[i]
-				if (track.mode !== 'showing' || !track.activeCues) continue
+		// Strategy 2: YouTube's caption overlay DOM (fallback for live streams)
+		if (newText.length === 0) {
+			const captionEls = document.querySelectorAll('.ytp-caption-segment')
+			if (captionEls.length > 0) {
+				const captionText = Array.from(captionEls)
+					.map((el) => el.textContent?.trim())
+					.filter(Boolean)
+					.join(' ')
 
-				for (let j = 0; j < track.activeCues.length; j++) {
-					const cue = track.activeCues[j] as VTTCue
-					const roundedStart = Math.round(cue.startTime)
-					if (this.sentSegments.has(roundedStart)) continue
-
-					this.sentSegments.add(roundedStart)
-					const text = cue.text?.replace(/<[^>]*>/g, '').trim()
-					if (text) {
-						newText.push(text)
-						if (!segStartTime || cue.startTime < segStartTime) segStartTime = cue.startTime
-						if (cue.endTime > segEndTime) segEndTime = cue.endTime
+				if (captionText) {
+					const roundedTime = Math.round(currentTime)
+					if (!this.sentSegments.has(roundedTime)) {
+						this.sentSegments.add(roundedTime)
+						newText.push(captionText)
+						segStartTime = currentTime
+						segEndTime = currentTime
 					}
 				}
 			}
@@ -476,13 +535,5 @@ export class YouTubeAdapter extends BaseAdapter {
 		// Extract numeric value from formatted amounts like "$5.00", "€10,00", "¥500"
 		const cleaned = text.replace(/[^0-9.,]/g, '').replace(',', '.')
 		return Number.parseFloat(cleaned) || 0
-	}
-
-	private parseTimestamp(text: string): number {
-		// Parse "1:23" or "1:23:45" into seconds
-		const parts = text.split(':').map(Number)
-		if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
-		if (parts.length === 2) return parts[0] * 60 + parts[1]
-		return parts[0] || 0
 	}
 }
