@@ -28,7 +28,8 @@
       "Read(//tmp/social_stream/sources/**)",
       "Read(//home/doodlebear/project/kite-u/**)",
       "Bash(git -C /home/doodlebear/project/ContextBro add src/components/TemplateEditor.tsx)",
-      "Bash(git -C:*)"
+      "Bash(git -C:*)",
+      "Bash(git status:*)"
     ],
     "additionalDirectories": [
       "/home/doodlebear/project/ContextBro/packages/docs/src/{assets,components,styles,content/{docs"
