@@ -536,13 +536,17 @@ export class YouTubeAdapter extends BaseAdapter {
 
 		if (newText.length === 0) return
 
+		// Skip emission when metadata is missing (e.g. ad playing over Shorts hides the overlay DOM)
+		const channelName = this.streamInfo?.channelName || ''
+		if (!channelName) return
+
 		const videoId = this.extractVideoId()
 
 		const chunk: TranscriptChunk = {
 			platform: 'youtube',
 			videoId,
-			title: this.streamInfo?.title || document.title,
-			channelName: this.streamInfo?.channelName || '',
+			title: this.streamInfo?.title || '',
+			channelName,
 			text: newText.join(' '),
 			startTime: segStartTime,
 			endTime: segEndTime,
