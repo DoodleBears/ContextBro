@@ -14,6 +14,42 @@ export default defineContentScript({
 
 		let adapter: YouTubeAdapter | null = null
 		let currentUrl = window.location.href
+		let shortsUrlPollTimer: ReturnType<typeof setInterval> | null = null
+
+		function startShortsUrlPoll() {
+			stopShortsUrlPoll()
+			if (!window.location.pathname.startsWith('/shorts')) return
+			// Shorts scroll uses history.replaceState — no yt-navigate-finish fires.
+			// Poll URL every 2s to detect the switch.
+			shortsUrlPollTimer = setInterval(() => {
+				if (ctx.isInvalid) {
+					stopShortsUrlPoll()
+					return
+				}
+				const newUrl = window.location.href
+				if (newUrl !== currentUrl) {
+					currentUrl = newUrl
+					console.debug('[context-bro] Shorts URL change detected (scroll)')
+					handleNavigation()
+				}
+			}, 2_000)
+		}
+
+		function stopShortsUrlPoll() {
+			if (shortsUrlPollTimer) {
+				clearInterval(shortsUrlPollTimer)
+				shortsUrlPollTimer = null
+			}
+		}
+
+		async function handleNavigation() {
+			stopAdapter()
+			// Wait for YouTube to render the new content
+			await new Promise((r) => setTimeout(r, 1500))
+			if (ctx.isInvalid) return
+			await startAdapter()
+			startShortsUrlPoll()
+		}
 
 		async function startAdapter() {
 			adapter = new YouTubeAdapter()
@@ -80,6 +116,7 @@ export default defineContentScript({
 
 		function stopAdapter() {
 			if (!adapter) return
+			stopShortsUrlPoll()
 			adapter.destroy()
 			adapter = null
 			if (ctx.isInvalid) return
@@ -98,14 +135,11 @@ export default defineContentScript({
 			if (newUrl === currentUrl) return
 			currentUrl = newUrl
 			console.debug('[context-bro] YouTube SPA navigation detected')
-			stopAdapter()
-			// Wait for YouTube to render the new page content (live badge, chat, channel name)
-			await new Promise((r) => setTimeout(r, 1500))
-			if (ctx.isInvalid) return
-			await startAdapter()
+			await handleNavigation()
 		})
 
 		await startAdapter()
+		startShortsUrlPoll()
 
 		// Re-announce adapter when tab becomes visible (handles service worker restart losing activeAdapters)
 		document.addEventListener('visibilitychange', () => {
@@ -123,6 +157,7 @@ export default defineContentScript({
 		// Cleanup when extension context is invalidated (extension reload/update)
 		ctx.onInvalidated(() => {
 			try {
+				stopShortsUrlPoll()
 				if (adapter) {
 					adapter.destroy()
 					adapter = null

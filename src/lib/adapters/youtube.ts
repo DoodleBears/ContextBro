@@ -566,12 +566,12 @@ export class YouTubeAdapter extends BaseAdapter {
 		let channelEl: Element | null
 
 		if (this.isShorts) {
-			// Shorts use a different DOM layout
+			// Shorts use a view-model based layout (yt-reel-*)
 			titleEl = document.querySelector(
-				'ytd-reel-video-renderer[is-active] #title, ytd-shorts h2.title, yt-formatted-string.title',
+				'ytd-reel-video-renderer[is-active] .ytShortsVideoTitleViewModelShortsVideoTitle, .ytShortsVideoTitleViewModelShortsVideoTitle',
 			)
 			channelEl = document.querySelector(
-				'ytd-reel-video-renderer[is-active] ytd-channel-name a, ytd-shorts ytd-channel-name a, ytd-reel-video-renderer[is-active] #channel-name a',
+				'ytd-reel-video-renderer[is-active] .ytReelChannelBarViewModelChannelName a, .ytReelChannelBarViewModelChannelName a',
 			)
 		} else {
 			titleEl =
