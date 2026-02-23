@@ -39,8 +39,14 @@ export class YouTubeAdapter extends BaseAdapter {
 	match(url: URL): boolean {
 		return (
 			(url.hostname === 'www.youtube.com' || url.hostname === 'youtube.com') &&
-			(url.pathname.startsWith('/watch') || url.pathname.startsWith('/live'))
+			(url.pathname.startsWith('/watch') ||
+				url.pathname.startsWith('/live') ||
+				url.pathname.startsWith('/shorts'))
 		)
+	}
+
+	private get isShorts(): boolean {
+		return window.location.pathname.startsWith('/shorts')
 	}
 
 	getStreamInfo(): StreamInfo | null {
@@ -104,7 +110,8 @@ export class YouTubeAdapter extends BaseAdapter {
 	}
 
 	protected async attach(): Promise<void> {
-		if (!this.config.youtube.chat) return
+		// Shorts have no live chat — skip chat attachment entirely
+		if (this.isShorts || !this.config.youtube.chat) return
 
 		// If not detected as live yet (SPA navigation timing), retry periodically
 		if (!this.isLive) {
@@ -529,7 +536,7 @@ export class YouTubeAdapter extends BaseAdapter {
 
 		if (newText.length === 0) return
 
-		const videoId = new URL(window.location.href).searchParams.get('v') || ''
+		const videoId = this.extractVideoId()
 
 		const chunk: TranscriptChunk = {
 			platform: 'youtube',
@@ -555,18 +562,31 @@ export class YouTubeAdapter extends BaseAdapter {
 	// ── Stream info ──
 
 	private buildStreamInfo(): StreamInfo {
-		const titleEl =
-			document.querySelector('h1.ytd-watch-metadata yt-formatted-string') ||
-			document.querySelector('#title h1')
-		const channelEl =
-			document.querySelector('#channel-name yt-formatted-string a') ||
-			document.querySelector('#owner-name a')
+		let titleEl: Element | null
+		let channelEl: Element | null
+
+		if (this.isShorts) {
+			// Shorts use a different DOM layout
+			titleEl = document.querySelector(
+				'ytd-reel-video-renderer[is-active] #title, ytd-shorts h2.title, yt-formatted-string.title',
+			)
+			channelEl = document.querySelector(
+				'ytd-reel-video-renderer[is-active] ytd-channel-name a, ytd-shorts ytd-channel-name a, ytd-reel-video-renderer[is-active] #channel-name a',
+			)
+		} else {
+			titleEl =
+				document.querySelector('h1.ytd-watch-metadata yt-formatted-string') ||
+				document.querySelector('#title h1')
+			channelEl =
+				document.querySelector('#channel-name yt-formatted-string a') ||
+				document.querySelector('#owner-name a')
+		}
 
 		return {
 			platform: 'youtube',
 			channelName: channelEl?.textContent?.trim() || '',
 			title: titleEl?.textContent?.trim() || document.title,
-			isLive: this.detectLive(),
+			isLive: this.isShorts ? false : this.detectLive(),
 			url: window.location.href,
 		}
 	}
@@ -581,6 +601,16 @@ export class YouTubeAdapter extends BaseAdapter {
 	}
 
 	// ── Helpers ──
+
+	private extractVideoId(): string {
+		const url = new URL(window.location.href)
+		// /watch?v=ID or /live?v=ID
+		const qp = url.searchParams.get('v')
+		if (qp) return qp
+		// /shorts/ID
+		const shortsMatch = url.pathname.match(/\/shorts\/([a-zA-Z0-9_-]+)/)
+		return shortsMatch?.[1] || ''
+	}
 
 	private async findChatContainer(timeoutMs: number): Promise<Element | null> {
 		const deadline = Date.now() + timeoutMs
