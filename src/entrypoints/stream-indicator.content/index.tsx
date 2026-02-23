@@ -3,6 +3,32 @@ import { createRoot } from 'react-dom/client'
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root'
 import type { StreamInfo } from '@/lib/adapters/types'
 
+// ── Indicator-specific i18n (standalone — no React Context available) ──
+
+type IndicatorLocale = 'en' | 'zh' | 'ja'
+
+const INDICATOR_STRINGS: Record<IndicatorLocale, Record<string, string>> = {
+	en: { msgs: 'msgs', batches: 'batches', transcripts: 'transcripts', unknown: 'Unknown' },
+	zh: { msgs: '消息', batches: '批次', transcripts: '字幕', unknown: '未知' },
+	ja: { msgs: '件', batches: 'バッチ', transcripts: '字幕', unknown: '不明' },
+}
+
+const INTL_LOCALE_MAP: Record<IndicatorLocale, string> = { en: 'en', zh: 'zh-CN', ja: 'ja' }
+
+function formatCompact(n: number, locale: IndicatorLocale): string {
+	if (n < 1000) return String(n)
+	return new Intl.NumberFormat(INTL_LOCALE_MAP[locale], {
+		notation: 'compact',
+		maximumFractionDigits: 1,
+	}).format(n)
+}
+
+function resolveIsDark(theme: string | undefined): boolean {
+	if (theme === 'dark') return true
+	if (theme === 'light') return false
+	return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
 export default defineContentScript({
 	matches: ['*://*.youtube.com/*', '*://*.twitch.tv/*'],
 	cssInjectionMode: 'manual',
@@ -16,6 +42,44 @@ export default defineContentScript({
 		let currentStats = { totalMessages: 0, totalBatches: 0, totalTranscripts: 0 }
 		let dismissed = false
 		let dismissTimer: ReturnType<typeof setTimeout> | null = null
+
+		// Read user preferences (locale + theme) from storage
+		let currentLocale: IndicatorLocale = 'en'
+		let currentIsDark = resolveIsDark(undefined)
+
+		try {
+			const result = await browser.storage.local.get('globalSettings')
+			const settings = result.globalSettings as { locale?: string; theme?: string } | undefined
+			if (settings?.locale && settings.locale in INDICATOR_STRINGS) {
+				currentLocale = settings.locale as IndicatorLocale
+			}
+			currentIsDark = resolveIsDark(settings?.theme)
+		} catch {
+			// Fallback to defaults
+		}
+
+		// React to settings changes (locale or theme) while the indicator is active
+		browser.storage.onChanged.addListener((changes) => {
+			if (!changes.globalSettings) return
+			const settings = changes.globalSettings.newValue as
+				| { locale?: string; theme?: string }
+				| undefined
+			if (!settings) return
+			let changed = false
+			if (settings.locale && settings.locale in INDICATOR_STRINGS) {
+				const newLocale = settings.locale as IndicatorLocale
+				if (newLocale !== currentLocale) {
+					currentLocale = newLocale
+					changed = true
+				}
+			}
+			const newIsDark = resolveIsDark(settings.theme)
+			if (newIsDark !== currentIsDark) {
+				currentIsDark = newIsDark
+				changed = true
+			}
+			if (changed && currentStreamInfo) render('active')
+		})
 
 		const ui = await createShadowRootUi(ctx, {
 			name: 'context-bro-stream-indicator',
@@ -47,6 +111,8 @@ export default defineContentScript({
 					streamInfo={currentStreamInfo}
 					endpointNames={currentEndpointNames}
 					stats={currentStats}
+					locale={currentLocale}
+					isDark={currentIsDark}
 					phase={phase}
 					onDismiss={() => {
 						dismissed = true
@@ -200,6 +266,8 @@ interface IndicatorProps {
 	streamInfo: StreamInfo
 	endpointNames: string[]
 	stats: { totalMessages: number; totalBatches: number; totalTranscripts: number }
+	locale: IndicatorLocale
+	isDark: boolean
 	phase: 'enter' | 'active' | 'exit'
 	onDismiss: () => void
 	onExitDone: () => void
@@ -209,13 +277,15 @@ function StreamIndicator({
 	streamInfo,
 	endpointNames,
 	stats,
+	locale,
+	isDark,
 	phase,
 	onDismiss,
 	onExitDone,
 }: IndicatorProps) {
 	const [visible, setVisible] = useState(false)
-	const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
 	const c = isDark ? COLORS.dark : COLORS.light
+	const s = INDICATOR_STRINGS[locale] || INDICATOR_STRINGS.en
 
 	useEffect(() => {
 		if (phase === 'enter') {
@@ -232,7 +302,7 @@ function StreamIndicator({
 
 	const isVisible = (visible && phase === 'enter') || phase === 'active'
 	const PlatformIcon = streamInfo.platform === 'twitch' ? TwitchIcon : YouTubeIcon
-	const channelName = streamInfo.channelName || 'Unknown'
+	const channelName = streamInfo.channelName || s.unknown
 
 	// Format endpoint display: "Name" or "Name +2"
 	let endpointLabel = ''
@@ -303,11 +373,17 @@ function StreamIndicator({
 				</>
 			)}
 			<span style={{ color: c.muted, opacity: 0.3 }}>{'|'}</span>
-			<span style={{ color: c.muted, fontSize: '11px' }}>{stats.totalMessages} msgs</span>
+			<span style={{ color: c.muted, fontSize: '11px' }}>
+				{formatCompact(stats.totalMessages, locale)} {s.msgs}
+			</span>
 			<span style={{ color: c.muted, opacity: 0.4 }}>{'·'}</span>
-			<span style={{ color: c.muted, fontSize: '11px' }}>{stats.totalBatches} batches</span>
+			<span style={{ color: c.muted, fontSize: '11px' }}>
+				{formatCompact(stats.totalBatches, locale)} {s.batches}
+			</span>
 			<span style={{ color: c.muted, opacity: 0.4 }}>{'·'}</span>
-			<span style={{ color: c.muted, fontSize: '11px' }}>{stats.totalTranscripts} transcripts</span>
+			<span style={{ color: c.muted, fontSize: '11px' }}>
+				{formatCompact(stats.totalTranscripts, locale)} {s.transcripts}
+			</span>
 			<button
 				type="button"
 				onClick={onDismiss}
