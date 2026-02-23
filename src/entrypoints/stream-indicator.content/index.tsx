@@ -15,6 +15,7 @@ export default defineContentScript({
 		let currentEndpointNames: string[] = []
 		let currentStats = { totalMessages: 0, totalBatches: 0, totalTranscripts: 0 }
 		let dismissed = false
+		let dismissTimer: ReturnType<typeof setTimeout> | null = null
 
 		const ui = await createShadowRootUi(ctx, {
 			name: 'context-bro-stream-indicator',
@@ -61,6 +62,12 @@ export default defineContentScript({
 
 			console.debug('[stream-indicator] showIndicator', streamInfo.channelName)
 
+			// Cancel any pending dismiss animation to avoid it removing the freshly mounted UI
+			if (dismissTimer) {
+				clearTimeout(dismissTimer)
+				dismissTimer = null
+			}
+
 			currentStreamInfo = streamInfo
 			currentEndpointNames = endpointNames
 			currentStats = { totalMessages: 0, totalBatches: 0, totalTranscripts: 0 }
@@ -96,7 +103,10 @@ export default defineContentScript({
 				return
 			}
 			render('exit')
-			setTimeout(() => ui.remove(), 300)
+			dismissTimer = setTimeout(() => {
+				dismissTimer = null
+				ui.remove()
+			}, 300)
 		}
 
 		browser.runtime.onMessage.addListener((message) => {

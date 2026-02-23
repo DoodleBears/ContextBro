@@ -212,21 +212,17 @@ export default defineBackground(() => {
 
 		if (message.action === 'getStreamState') {
 			const tabId = _sender.tab?.id
-			if (tabId != null && tabId === focusedTabId) {
-				const adapter = activeAdapters.get(tabId)
-				if (adapter) {
-					sendResponse({
-						active: true,
-						platform: adapter.platform,
-						streamInfo: adapter.streamInfo,
-						endpointNames: adapter.endpointNames,
-						totalMessages: adapter.totalMessages,
-						totalBatches: adapter.totalBatches,
-						totalTranscripts: adapter.totalTranscripts,
-					})
-				} else {
-					sendResponse({ active: false })
-				}
+			const adapter = tabId != null ? activeAdapters.get(tabId) : undefined
+			if (adapter) {
+				sendResponse({
+					active: true,
+					platform: adapter.platform,
+					streamInfo: adapter.streamInfo,
+					endpointNames: adapter.endpointNames,
+					totalMessages: adapter.totalMessages,
+					totalBatches: adapter.totalBatches,
+					totalTranscripts: adapter.totalTranscripts,
+				})
 			} else {
 				sendResponse({ active: false })
 			}
@@ -433,19 +429,9 @@ interface ActiveAdapter {
 }
 
 const activeAdapters = new Map<number, ActiveAdapter>()
-let focusedTabId: number | null = null
 
-// Track focused tab for focus-only adapter processing
+// Re-show indicator when switching to a tab (recovery after service worker restart)
 browser.tabs.onActivated.addListener(({ tabId }) => {
-	const previousFocused = focusedTabId
-	focusedTabId = tabId
-
-	// Dismiss indicator on previously focused tab if it had an adapter
-	if (previousFocused != null && previousFocused !== tabId && activeAdapters.has(previousFocused)) {
-		browser.tabs.sendMessage(previousFocused, { action: 'dismissStreamIndicator' }).catch(() => {})
-	}
-
-	// Show indicator on newly focused tab if it has an adapter
 	const adapter = activeAdapters.get(tabId)
 	if (adapter) {
 		browser.tabs
@@ -470,45 +456,6 @@ browser.tabs.onActivated.addListener(({ tabId }) => {
 	}
 })
 
-// Also track window focus changes
-browser.windows.onFocusChanged.addListener(async (windowId) => {
-	if (windowId === browser.windows.WINDOW_ID_NONE) return
-	try {
-		const [tab] = await browser.tabs.query({ active: true, windowId })
-		if (tab?.id != null) {
-			const previousFocused = focusedTabId
-			focusedTabId = tab.id
-
-			if (
-				previousFocused != null &&
-				previousFocused !== tab.id &&
-				activeAdapters.has(previousFocused)
-			) {
-				browser.tabs
-					.sendMessage(previousFocused, { action: 'dismissStreamIndicator' })
-					.catch(() => {})
-			}
-
-			const adapter = activeAdapters.get(tab.id)
-			if (adapter) {
-				browser.tabs
-					.sendMessage(tab.id, {
-						action: 'showStreamIndicator',
-						platform: adapter.platform,
-						streamInfo: adapter.streamInfo,
-						endpointNames: adapter.endpointNames,
-					})
-					.catch(() => {})
-			}
-		}
-	} catch {}
-})
-
-// Initialize focused tab on startup
-browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
-	if (tab?.id != null) focusedTabId = tab.id
-})
-
 async function resolveStreamEndpoints(): Promise<{ targets: Endpoint[]; names: string[] }> {
 	const [allEndpoints, config] = await Promise.all([getEndpoints(), getLiveStreamConfig()])
 	// Only send to explicitly selected endpoints; empty = no sending
@@ -527,29 +474,29 @@ async function handleAdapterActive(
 ): Promise<void> {
 	const { names } = await resolveStreamEndpoints()
 
+	// Preserve existing stats on re-announce (e.g., visibilitychange after service worker restart)
+	const existing = activeAdapters.get(tabId)
 	activeAdapters.set(tabId, {
 		tabId,
 		platform,
 		streamInfo: streamInfo || null,
 		endpointNames: names,
-		totalMessages: 0,
-		totalBatches: 0,
-		totalTranscripts: 0,
+		totalMessages: existing?.totalMessages ?? 0,
+		totalBatches: existing?.totalBatches ?? 0,
+		totalTranscripts: existing?.totalTranscripts ?? 0,
 	})
 	updateBadge()
 	console.debug(`[adapter] ${platform} active (tab ${tabId}):`, streamInfo?.title || 'unknown')
 
-	// Only show indicator on the focused tab
-	if (tabId === focusedTabId) {
-		browser.tabs
-			.sendMessage(tabId, {
-				action: 'showStreamIndicator',
-				platform,
-				streamInfo,
-				endpointNames: names,
-			})
-			.catch(() => {})
-	}
+	// Show indicator on the adapter's tab
+	browser.tabs
+		.sendMessage(tabId, {
+			action: 'showStreamIndicator',
+			platform,
+			streamInfo,
+			endpointNames: names,
+		})
+		.catch(() => {})
 }
 
 function handleAdapterInactive(platform: string, tabId: number): void {
@@ -575,12 +522,6 @@ function updateBadge(): void {
 
 async function handleChatBatch(batch: ChatBatch, tabId: number) {
 	try {
-		// Only process chat from the focused tab
-		if (tabId !== focusedTabId) {
-			console.debug(`[adapter] chat batch dropped: tab ${tabId} not focused`)
-			return { ok: false, error: 'Tab not focused' }
-		}
-
 		const [allEndpoints, config] = await Promise.all([getEndpoints(), getLiveStreamConfig()])
 
 		// Only send to explicitly selected endpoints; empty = no sending
@@ -696,12 +637,6 @@ async function handleChatBatch(batch: ChatBatch, tabId: number) {
 
 async function handleTranscript(chunk: TranscriptChunk, tabId: number) {
 	try {
-		// Only process transcript from the focused tab
-		if (tabId !== focusedTabId) {
-			console.debug(`[adapter] transcript dropped: tab ${tabId} not focused`)
-			return { ok: false, error: 'Tab not focused' }
-		}
-
 		const [allEndpoints, config] = await Promise.all([getEndpoints(), getLiveStreamConfig()])
 
 		// Only send to explicitly selected endpoints; empty = no sending

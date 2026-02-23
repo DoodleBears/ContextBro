@@ -32,6 +32,8 @@ export class YouTubeAdapter extends BaseAdapter {
 	private sentSegments = new Set<number>()
 	private isLive = false
 	private captionSegments: CaptionSegment[] = []
+	private chatRetryTimer: ReturnType<typeof setInterval> | null = null
+	private captionRetryTimer: ReturnType<typeof setInterval> | null = null
 
 	match(url: URL): boolean {
 		return (
@@ -64,6 +66,18 @@ export class YouTubeAdapter extends BaseAdapter {
 			// Fetch full captions upfront via timedtext API, then track progressively
 			await this.fetchCaptions()
 			this.startTranscriptTracking()
+
+			// If no captions found (e.g., ad playing or data not ready), retry periodically
+			if (this.captionSegments.length === 0) {
+				this.captionRetryTimer = setInterval(async () => {
+					await this.fetchCaptions()
+					if (this.captionSegments.length > 0 && this.captionRetryTimer) {
+						clearInterval(this.captionRetryTimer)
+						this.captionRetryTimer = null
+						console.debug('[youtube] Captions fetched on retry')
+					}
+				}, 10_000)
+			}
 		}
 	}
 
@@ -74,6 +88,14 @@ export class YouTubeAdapter extends BaseAdapter {
 			clearInterval(this.transcriptTimer)
 			this.transcriptTimer = null
 		}
+		if (this.chatRetryTimer) {
+			clearInterval(this.chatRetryTimer)
+			this.chatRetryTimer = null
+		}
+		if (this.captionRetryTimer) {
+			clearInterval(this.captionRetryTimer)
+			this.captionRetryTimer = null
+		}
 	}
 
 	protected async attach(): Promise<void> {
@@ -82,19 +104,36 @@ export class YouTubeAdapter extends BaseAdapter {
 
 		// Live chat may be in an iframe
 		const target = await this.findChatContainer(15_000)
-		if (!target) {
-			console.debug('[youtube] Live chat container not found')
+		if (target) {
+			this.observeChat(target)
 			return
 		}
 
-		// Main observer for new messages
-		this.attachObserver(target, {
+		// Chat container not found — likely blocked by a pre-roll ad. Retry periodically.
+		console.debug('[youtube] Live chat container not found, will retry (ad may be playing)')
+		this.chatRetryTimer = setInterval(() => {
+			const el =
+				document.querySelector(CHAT_CONTAINER_SELECTOR) ||
+				(document.querySelector('iframe#chatframe') as HTMLIFrameElement | null)?.contentDocument?.querySelector(
+					CHAT_CONTAINER_SELECTOR,
+				)
+			if (el) {
+				if (this.chatRetryTimer) {
+					clearInterval(this.chatRetryTimer)
+					this.chatRetryTimer = null
+				}
+				this.observeChat(el)
+				console.debug('[youtube] Live chat container found on retry (ad ended)')
+			}
+		}, 5_000)
+	}
+
+	private observeChat(container: Element): void {
+		this.attachObserver(container, {
 			childList: true,
 			subtree: false,
 		})
-
-		// Deletion observer for is-deleted attribute
-		this.attachDeletionObserver(target, {
+		this.attachDeletionObserver(container, {
 			attributes: true,
 			attributeFilter: ['is-deleted'],
 			subtree: true,

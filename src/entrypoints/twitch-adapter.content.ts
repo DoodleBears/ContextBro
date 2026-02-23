@@ -40,6 +40,18 @@ export default defineContentScript({
 			})
 			.catch(() => {})
 
+		// Re-announce adapter when tab becomes visible (handles service worker restart losing activeAdapters)
+		document.addEventListener('visibilitychange', () => {
+			if (ctx.isInvalid || document.visibilityState !== 'visible') return
+			browser.runtime
+				.sendMessage({
+					action: 'adapterActive',
+					platform: 'twitch',
+					streamInfo: adapter.getStreamInfo(),
+				})
+				.catch(() => {})
+		})
+
 		// Cleanup when extension context is invalidated (extension reload/update)
 		ctx.onInvalidated(() => {
 			try {

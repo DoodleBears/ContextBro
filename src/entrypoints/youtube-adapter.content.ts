@@ -104,6 +104,19 @@ export default defineContentScript({
 
 		await startAdapter()
 
+		// Re-announce adapter when tab becomes visible (handles service worker restart losing activeAdapters)
+		document.addEventListener('visibilitychange', () => {
+			if (ctx.isInvalid || !adapter || document.visibilityState !== 'visible') return
+			const streamInfo = adapter.getStreamInfo()
+			browser.runtime
+				.sendMessage({
+					action: 'adapterActive',
+					platform: 'youtube',
+					streamInfo,
+				})
+				.catch(() => {})
+		})
+
 		// Cleanup when extension context is invalidated (extension reload/update)
 		ctx.onInvalidated(() => {
 			try {
