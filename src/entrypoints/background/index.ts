@@ -486,7 +486,9 @@ async function handleAdapterActive(
 		totalTranscripts: existing?.totalTranscripts ?? 0,
 	})
 	updateBadge()
-	console.debug(`[adapter] ${platform} active (tab ${tabId}):`, streamInfo?.title || 'unknown')
+	console.debug(
+		`[adapter] ${platform} active (tab ${tabId}): channel=${streamInfo?.channelName || '?'} title=${streamInfo?.title || '?'} live=${streamInfo?.isLive ?? '?'} url=${streamInfo?.url || '?'}`,
+	)
 
 	// Show indicator on the adapter's tab
 	browser.tabs
@@ -500,9 +502,12 @@ async function handleAdapterActive(
 }
 
 function handleAdapterInactive(platform: string, tabId: number): void {
+	const was = activeAdapters.get(tabId)
 	activeAdapters.delete(tabId)
 	updateBadge()
-	console.debug(`[adapter] ${platform} inactive (tab ${tabId})`)
+	console.debug(
+		`[adapter] ${platform} inactive (tab ${tabId}): was channel=${was?.streamInfo?.channelName || '?'}`,
+	)
 
 	browser.tabs
 		.sendMessage(tabId, {
@@ -530,20 +535,23 @@ async function handleChatBatch(batch: ChatBatch, tabId: number) {
 				? allEndpoints.filter((e) => e.enabled && config.endpointIds.includes(e.id))
 				: []
 		if (targets.length === 0) {
-			console.debug('[adapter] chat batch dropped: no endpoint selected')
+			console.debug(`[adapter] chat batch dropped (${batch.channelName || '?'}, ${batch.totalCount} msgs): no endpoint selected`)
 			// Still update stats even though we're not sending
 			const adapter = activeAdapters.get(tabId)
 			if (adapter) {
 				adapter.totalMessages += batch.totalCount
 				adapter.totalBatches += 1
-				if (batch.streamInfo) adapter.streamInfo = batch.streamInfo
+				// Only update streamInfo if it belongs to the same stream (avoid stale batch from old adapter)
+				if (batch.streamInfo && (!adapter.streamInfo?.url || batch.streamInfo.url === adapter.streamInfo.url)) {
+					adapter.streamInfo = batch.streamInfo
+				}
 				browser.tabs
 					.sendMessage(tabId, {
 						action: 'updateStreamIndicator',
 						totalMessages: adapter.totalMessages,
 						totalBatches: adapter.totalBatches,
 						totalTranscripts: adapter.totalTranscripts,
-						streamInfo: batch.streamInfo,
+						streamInfo: adapter.streamInfo,
 					})
 					.catch(() => {})
 			}
@@ -591,9 +599,9 @@ async function handleChatBatch(batch: ChatBatch, tabId: number) {
 			const statusText = r.status === 'fulfilled' ? r.value.statusText : String(r.reason)
 
 			if (ok) {
-				console.debug(`[adapter] chat batch sent → ${epName}: ${status}`)
+				console.debug(`[adapter] chat batch sent (${batch.channelName || '?'}, ${batch.totalCount} msgs) → ${epName}: ${status}`)
 			} else {
-				console.error(`[adapter] chat batch failed → ${epName}: ${status} ${statusText}`)
+				console.error(`[adapter] chat batch failed (${batch.channelName || '?'}, ${batch.totalCount} msgs) → ${epName}: ${status} ${statusText}`)
 			}
 
 			appendSendHistory({
@@ -613,15 +621,17 @@ async function handleChatBatch(batch: ChatBatch, tabId: number) {
 		if (adapter) {
 			adapter.totalMessages += batch.totalCount
 			adapter.totalBatches += 1
-			// Keep streamInfo fresh (channel name may have loaded late)
-			if (batch.streamInfo) adapter.streamInfo = batch.streamInfo
+			// Only update streamInfo if it belongs to the same stream (avoid stale batch from old adapter)
+			if (batch.streamInfo && (!adapter.streamInfo?.url || batch.streamInfo.url === adapter.streamInfo.url)) {
+				adapter.streamInfo = batch.streamInfo
+			}
 			browser.tabs
 				.sendMessage(tabId, {
 					action: 'updateStreamIndicator',
 					totalMessages: adapter.totalMessages,
 					totalBatches: adapter.totalBatches,
 					totalTranscripts: adapter.totalTranscripts,
-					streamInfo: batch.streamInfo,
+					streamInfo: adapter.streamInfo,
 				})
 				.catch(() => {})
 		}
@@ -679,19 +689,30 @@ async function handleTranscript(chunk: TranscriptChunk, tabId: number) {
 
 		const results = await Promise.allSettled(targets.map((ep) => sendToEndpoint(ep, body)))
 
-		// Record send history
+		// Log results and record send history
 		for (let i = 0; i < results.length; i++) {
 			const r = results[i]
 			const ep = targets[i]
+			const epName = ep.name || 'Unnamed'
+			const ok = r.status === 'fulfilled' && r.value.ok
+			const status = r.status === 'fulfilled' ? r.value.status : 0
+			const statusText = r.status === 'fulfilled' ? r.value.statusText : String(r.reason)
+
+			if (ok) {
+				console.debug(`[adapter] transcript sent (${chunk.channelName || '?'}, t=${Math.round(chunk.currentTime ?? 0)}s) → ${epName}: ${status}`)
+			} else {
+				console.error(`[adapter] transcript failed (${chunk.channelName || '?'}, t=${Math.round(chunk.currentTime ?? 0)}s) → ${epName}: ${status} ${statusText}`)
+			}
+
 			appendSendHistory({
 				id: crypto.randomUUID(),
 				timestamp: Date.now(),
 				url: chunk.videoId ? `https://youtube.com/watch?v=${chunk.videoId}` : '',
-				endpointName: ep.name || 'Unnamed',
+				endpointName: epName,
 				trigger: 'livestream',
-				ok: r.status === 'fulfilled' && r.value.ok,
-				status: r.status === 'fulfilled' ? r.value.status : 0,
-				statusText: r.status === 'fulfilled' ? r.value.statusText : String(r.reason),
+				ok,
+				status,
+				statusText,
 			}).catch(() => {})
 		}
 

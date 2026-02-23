@@ -34,6 +34,7 @@ export class YouTubeAdapter extends BaseAdapter {
 	private captionSegments: CaptionSegment[] = []
 	private chatRetryTimer: ReturnType<typeof setInterval> | null = null
 	private captionRetryTimer: ReturnType<typeof setInterval> | null = null
+	private liveRetryTimer: ReturnType<typeof setInterval> | null = null
 
 	match(url: URL): boolean {
 		return (
@@ -96,12 +97,37 @@ export class YouTubeAdapter extends BaseAdapter {
 			clearInterval(this.captionRetryTimer)
 			this.captionRetryTimer = null
 		}
+		if (this.liveRetryTimer) {
+			clearInterval(this.liveRetryTimer)
+			this.liveRetryTimer = null
+		}
 	}
 
 	protected async attach(): Promise<void> {
-		// Only observe chat on live streams with chat enabled
-		if (!this.isLive || !this.config.youtube.chat) return
+		if (!this.config.youtube.chat) return
 
+		// If not detected as live yet (SPA navigation timing), retry periodically
+		if (!this.isLive) {
+			this.liveRetryTimer = setInterval(async () => {
+				if (this.detectLive()) {
+					this.isLive = true
+					if (this.liveRetryTimer) {
+						clearInterval(this.liveRetryTimer)
+						this.liveRetryTimer = null
+					}
+					// Update streamInfo with fresh live status
+					this.streamInfo = this.buildStreamInfo()
+					console.debug('[youtube] Live detected on retry, attaching chat')
+					await this.attachChat()
+				}
+			}, 5_000)
+			return
+		}
+
+		await this.attachChat()
+	}
+
+	private async attachChat(): Promise<void> {
 		// Live chat may be in an iframe
 		const target = await this.findChatContainer(15_000)
 		if (target) {

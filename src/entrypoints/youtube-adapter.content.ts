@@ -99,6 +99,9 @@ export default defineContentScript({
 			currentUrl = newUrl
 			console.debug('[context-bro] YouTube SPA navigation detected')
 			stopAdapter()
+			// Wait for YouTube to render the new page content (live badge, chat, channel name)
+			await new Promise((r) => setTimeout(r, 1500))
+			if (ctx.isInvalid) return
 			await startAdapter()
 		})
 
