@@ -54,6 +54,7 @@ export default function App() {
 	const [devMode, setDevMode] = useState(false)
 	const [debugQuality, setDebugQuality] = useState<DebugQualityInfo | null>(null)
 	const [debugMeta, setDebugMeta] = useState<DebugPayload | null>(null)
+	const [showDevInfo, setShowDevInfo] = useState(false)
 
 	const hasMatchedRules = matchedRules.length > 0
 
@@ -230,7 +231,7 @@ export default function App() {
 	}
 
 	return (
-		<div className="w-96 h-screen flex flex-col bg-background">
+		<div className="w-96 bg-background">
 			{/* Header */}
 			<div className="flex items-center justify-between border-b px-4 py-3">
 				<div className="flex items-center gap-1.5">
@@ -265,7 +266,7 @@ export default function App() {
 				</div>
 			</div>
 
-			<div className="flex-1 space-y-3 p-4 overflow-y-auto">
+			<div className="space-y-3 p-4 max-h-[560px] overflow-y-auto">
 				{/* Page Info */}
 				{pageInfo && (
 					<div className="rounded-md border bg-muted/50 p-2">
@@ -366,10 +367,15 @@ export default function App() {
 				{/* Dev diagnostics (bottom section) */}
 				{devMode && (
 					<div className="space-y-1.5 border-t pt-2">
-						<span className="block text-xs font-medium text-muted-foreground">
-							{t('popup.devInfo')}
-						</span>
-						{debugQuality ? (
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-7 px-0 text-xs text-muted-foreground hover:text-foreground"
+							onClick={() => setShowDevInfo((v) => !v)}
+						>
+							{t('popup.devInfo')} {showDevInfo ? '▲' : '▼'}
+						</Button>
+						{showDevInfo && (debugQuality ? (
 							<div className="rounded-md border bg-muted/20 p-2 text-xs">
 								<div className="grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
 									<span>quality.ok</span>
@@ -400,7 +406,7 @@ export default function App() {
 							</div>
 						) : (
 							<p className="text-xs text-muted-foreground">{t('popup.devEmpty')}</p>
-						)}
+						))}
 					</div>
 				)}
 			</div>
