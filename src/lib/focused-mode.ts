@@ -1,5 +1,6 @@
-import { matchesPattern } from '@/lib/allowlist'
+import { isMatchedByPatternRules, matchesPattern } from '@/lib/allowlist'
 import { sendToEndpoint } from '@/lib/api/send'
+import { evaluateContentQuality } from '@/lib/content-quality'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
 import { hasContentChanged } from '@/lib/dedup'
 import { appendSendHistory, getLastSharedAt, getSiteRules, setLastSharedAt } from '@/lib/storage'
@@ -123,13 +124,18 @@ async function handleTabFocus(tabId: number, deps: FocusedModeDeps): Promise<voi
 
 	// Find matching focused-mode rules
 	const rules = await getSiteRules()
-	const matchingRules = rules.filter(
-		(r) =>
-			r.enabled &&
-			r.autoShare &&
-			r.scheduleMode === 'focused' &&
-			r.patterns.some((p) => matchesPattern(hostname, p)),
+	const focusedRules = rules.filter(
+		(r) => r.enabled && r.autoShare && r.scheduleMode === 'focused',
 	)
+	const patternMatches = focusedRules.filter(
+		(r) => !r.catchAll && r.patterns.some((p) => matchesPattern(hostname, p)),
+	)
+	const matchingRules =
+		patternMatches.length > 0
+			? patternMatches
+			: !isMatchedByPatternRules(hostname, rules)
+				? focusedRules.filter((r) => r.catchAll)
+				: []
 
 	if (matchingRules.length === 0) return
 
@@ -213,6 +219,17 @@ async function extractForFocusedRules(
 			await deps.ensureContentScript(tabId)
 			const response = await extractPageContent(tabId)
 			if (!response) continue
+
+			// CatchAll rule should be conservative: only auto-send valuable page content.
+			if (rule.catchAll) {
+				const quality = evaluateContentQuality(response)
+				if (!quality.ok) {
+					console.debug(
+						`[focused-mode] Skipping low-value catchAll content: ${url} (${quality.reason}, score=${quality.score}, chars=${quality.textLength})`,
+					)
+					continue
+				}
+			}
 
 			const contentKey = response.content || response.fullHtml || ''
 			const changed = await hasContentChanged(

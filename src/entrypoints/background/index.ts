@@ -3,6 +3,7 @@ import { matchesSiteRules } from '@/lib/allowlist'
 import { sendToEndpoint } from '@/lib/api/send'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
 import { initFocusedMode } from '@/lib/focused-mode'
+import { handleContentReady, initRealtimeMode } from '@/lib/realtime-mode'
 import {
 	migrateV1ToV2,
 	migrateV2ToV3,
@@ -13,6 +14,7 @@ import {
 	migrateV7ToV8,
 	migrateV8ToV9,
 	migrateV9ToV10,
+	migrateV10ToV11,
 } from '@/lib/migration'
 import { initScheduler, updateGlobalSettings, updateSiteRules } from '@/lib/scheduler'
 import {
@@ -116,6 +118,10 @@ export default defineBackground(() => {
 		})
 		.then((migrated) => {
 			if (migrated) console.debug('[background] V9→V10 migration completed')
+			return migrateV10ToV11()
+		})
+		.then((migrated) => {
+			if (migrated) console.debug('[background] V10→V11 migration completed')
 		})
 
 	// Initialize the scheduled extraction system
@@ -127,6 +133,13 @@ export default defineBackground(() => {
 
 	// Initialize event-driven focused-mode extraction
 	initFocusedMode({
+		ensureContentScript,
+		getEndpoints,
+		getTemplate,
+	})
+
+	// Initialize push-based realtime-mode extraction
+	initRealtimeMode({
 		ensureContentScript,
 		getEndpoints,
 		getTemplate,
@@ -205,6 +218,16 @@ export default defineBackground(() => {
 
 		if (message.action === 'resolveSystemTheme') {
 			applyToolbarIcon(message.isDark as boolean)
+			return false
+		}
+
+		// ── Realtime mode: content script push notifications ──
+
+		if (message.action === 'contentReady') {
+			const tabId = _sender.tab?.id
+			if (tabId != null) {
+				handleContentReady(tabId, message.url, message.event)
+			}
 			return false
 		}
 

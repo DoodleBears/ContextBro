@@ -261,6 +261,33 @@ export async function migrateV8ToV9(): Promise<boolean> {
 }
 
 /**
+ * Migrate from v10 to v11:
+ * - Add `realtimeDebounceMs` + `realtimeTriggers` to SiteRule
+ * Idempotent — skips if rules already have `realtimeDebounceMs`.
+ */
+export async function migrateV10ToV11(): Promise<boolean> {
+	const result = await browser.storage.local.get(['siteRules'])
+	const siteRules = (result.siteRules as Record<string, unknown>[]) || []
+
+	if (siteRules.length === 0) return false
+	if (siteRules[0].realtimeDebounceMs !== undefined) return false
+
+	const updatedRules = siteRules.map((r) => ({
+		...r,
+		realtimeDebounceMs: 2000,
+		realtimeTriggers: {
+			onLoad: true,
+			onSpaNavigation: true,
+			onVisibilityChange: false,
+		},
+	}))
+
+	await browser.storage.local.set({ siteRules: updatedRules })
+	console.debug(`[migration] V10→V11: added realtime fields to ${updatedRules.length} rules`)
+	return true
+}
+
+/**
  * Migrate from v9 to v10:
  * - Add `flush.mode` to liveStreamConfig (default 'batched')
  * Idempotent — skips if flush.mode already exists.

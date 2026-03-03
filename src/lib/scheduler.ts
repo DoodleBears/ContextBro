@@ -1,5 +1,6 @@
-import { matchesPattern } from '@/lib/allowlist'
+import { isMatchedByPatternRules, matchesPattern } from '@/lib/allowlist'
 import { sendToEndpoint } from '@/lib/api/send'
+import { evaluateContentQuality } from '@/lib/content-quality'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
 import { hasContentChanged } from '@/lib/dedup'
 import {
@@ -115,14 +116,19 @@ async function runScheduledExtraction(deps: {
 			if (!tab.id || !tab.url) continue
 			if (!tab.url.startsWith('http://') && !tab.url.startsWith('https://')) continue
 
-			// Check if this tab matches this specific rule's pattern
 			let hostname: string
 			try {
 				hostname = new URL(tab.url).hostname
 			} catch {
 				continue
 			}
-			if (!rule.patterns.some((p) => matchesPattern(hostname, p))) continue
+
+			// CatchAll rules match tabs not covered by any pattern-based rule
+			if (rule.catchAll) {
+				if (isMatchedByPatternRules(hostname, rules)) continue
+			} else {
+				if (!rule.patterns.some((p) => matchesPattern(hostname, p))) continue
+			}
 
 			// Avoid processing the same rule+tab combo
 			const comboKey = `${rule.id}::${tab.id}`
@@ -133,6 +139,17 @@ async function runScheduledExtraction(deps: {
 				await deps.ensureContentScript(tab.id)
 				const response = await extractPageContent(tab.id)
 				if (!response) continue
+
+				// CatchAll rule should be conservative: only auto-send valuable page content.
+				if (rule.catchAll) {
+					const quality = evaluateContentQuality(response)
+					if (!quality.ok) {
+						console.debug(
+							`[scheduler] Skipping low-value catchAll content: ${tab.url} (${quality.reason}, score=${quality.score}, chars=${quality.textLength})`,
+						)
+						continue
+					}
+				}
 
 				// Dedup — skip if page content hasn't changed
 				const contentKey = response.content || response.fullHtml || ''

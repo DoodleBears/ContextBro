@@ -22,6 +22,12 @@ export interface Property {
 	type?: string
 }
 
+export interface RealtimeTriggers {
+	onLoad: boolean
+	onSpaNavigation: boolean
+	onVisibilityChange: boolean
+}
+
 export interface SiteRule {
 	id: string
 	name: string
@@ -31,12 +37,16 @@ export interface SiteRule {
 	endpointIds: string[]
 	autoShare: boolean
 	intervalMinutes: number
-	scheduleMode: 'focused' | 'any_tab'
+	scheduleMode: 'focused' | 'any_tab' | 'realtime'
 	dwellSeconds: number
 	refetchEnabled: boolean
 	refetchIntervalSeconds: number
 	dedupEnabled: boolean
 	dedupWindowSeconds: number
+	realtimeDebounceMs: number
+	realtimeTriggers: RealtimeTriggers
+	/** When true, this rule matches any http/https URL not covered by other rules. */
+	catchAll?: boolean
 }
 
 export interface GlobalSettings {
@@ -75,7 +85,7 @@ export interface SendHistoryEntry {
 	url: string
 	endpointName: string
 	ruleName?: string
-	trigger: 'scheduler' | 'focused' | 'manual' | 'livestream'
+	trigger: 'scheduler' | 'focused' | 'manual' | 'livestream' | 'realtime'
 	ok: boolean
 	status: number
 	statusText: string
