@@ -11,9 +11,19 @@ import { SendHistoryPanel } from '@/components/SendHistoryPanel'
 import { SiteRuleEditor } from '@/components/SiteRuleEditor'
 import { TemplateEditor } from '@/components/TemplateEditor'
 import { ThemeSwitcher } from '@/components/ThemeSwitcher'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useLocale } from '@/lib/i18n'
-import { DEFAULT_LIVE_STREAM_CONFIG } from '@/lib/storage'
+import { DEFAULT_GLOBAL_SETTINGS, DEFAULT_LIVE_STREAM_CONFIG } from '@/lib/storage'
 import { applyTheme, type Theme, watchSystemTheme } from '@/lib/theme'
 import type {
 	ContextBroTemplate,
@@ -22,11 +32,6 @@ import type {
 	LiveStreamConfig,
 	SiteRule,
 } from '@/lib/types'
-
-const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
-	locale: 'en',
-	theme: 'system',
-}
 
 export default function App() {
 	const { t, locale } = useLocale()
@@ -38,6 +43,7 @@ export default function App() {
 		DEFAULT_LIVE_STREAM_CONFIG,
 	)
 	const [activeTab, setActiveTab] = useState('sites')
+	const [showAdvancedSettings, setShowAdvancedSettings] = useState(false)
 
 	// Auto-save: skip saving until initial load completes
 	const loaded = useRef(false)
@@ -54,7 +60,19 @@ export default function App() {
 		setSiteRules((result.siteRules as SiteRule[]) || [])
 		setEndpoints((result.endpoints as Endpoint[]) || [])
 		setTemplates((result.templates as ContextBroTemplate[]) || [])
-		setGlobalSettings((result.globalSettings as GlobalSettings) || DEFAULT_GLOBAL_SETTINGS)
+		const storedGlobal = (result.globalSettings as Partial<GlobalSettings>) || {}
+		setGlobalSettings({
+			...DEFAULT_GLOBAL_SETTINGS,
+			...storedGlobal,
+			contentQuality: {
+				...DEFAULT_GLOBAL_SETTINGS.contentQuality,
+				...storedGlobal.contentQuality,
+			},
+			contentCleaning: {
+				...DEFAULT_GLOBAL_SETTINGS.contentCleaning,
+				...storedGlobal.contentCleaning,
+			},
+		})
 		const storedLs = (result.liveStreamConfig as Partial<LiveStreamConfig>) || {}
 		setLiveStreamConfig({
 			...DEFAULT_LIVE_STREAM_CONFIG,
@@ -233,6 +251,133 @@ export default function App() {
 								</a>
 							</p>
 						</div>
+
+						<div className="rounded-lg border p-5">
+							<div className="flex items-center justify-between">
+								<div>
+									<h3 className="text-sm font-medium">{t('general.advanced')}</h3>
+									<p className="text-xs text-muted-foreground mt-1">
+										{t('general.advancedToggleDesc')}
+									</p>
+								</div>
+								<Switch
+									checked={showAdvancedSettings}
+									onCheckedChange={setShowAdvancedSettings}
+								/>
+							</div>
+						</div>
+
+						{showAdvancedSettings && (
+							<div className="rounded-lg border p-5 space-y-4">
+								<div className="flex items-center justify-between">
+									<div>
+										<p className="text-sm font-medium">{t('general.devMode')}</p>
+										<p className="text-xs text-muted-foreground">{t('general.devModeDesc')}</p>
+									</div>
+									<Switch
+										checked={globalSettings.devMode}
+										onCheckedChange={(checked) =>
+											setGlobalSettings((prev) => ({ ...prev, devMode: checked }))
+										}
+									/>
+								</div>
+
+								<div className="space-y-2">
+									<Label className="text-xs text-muted-foreground">
+										{t('general.markdownLinkPolicy')}
+									</Label>
+									<Select
+										value={globalSettings.contentCleaning.markdownLinkPolicy}
+										onValueChange={(value) =>
+											setGlobalSettings((prev) => ({
+												...prev,
+												contentCleaning: {
+													...prev.contentCleaning,
+													markdownLinkPolicy:
+														value as GlobalSettings['contentCleaning']['markdownLinkPolicy'],
+												},
+											}))
+										}
+									>
+										<SelectTrigger className="h-8 text-xs w-[220px]">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="text_only">{t('general.linkPolicyTextOnly')}</SelectItem>
+											<SelectItem value="domain_only">{t('general.linkPolicyDomainOnly')}</SelectItem>
+											<SelectItem value="keep">{t('general.linkPolicyKeep')}</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+
+								<div className="space-y-2">
+									<p className="text-sm font-medium">{t('general.qualityThresholds')}</p>
+									<div className="flex items-center gap-3">
+										<div className="space-y-1">
+											<Label className="text-xs text-muted-foreground">
+												{t('general.minTextLength')}
+											</Label>
+											<Input
+												type="number"
+												min={20}
+												value={globalSettings.contentQuality.minTextLength}
+												onChange={(e) => {
+													const value = Number.parseInt(e.target.value, 10)
+													if (!Number.isNaN(value) && value >= 20) {
+														setGlobalSettings((prev) => ({
+															...prev,
+															contentQuality: { ...prev.contentQuality, minTextLength: value },
+														}))
+													}
+												}}
+												className="h-8 w-24 text-xs"
+											/>
+										</div>
+										<div className="space-y-1">
+											<Label className="text-xs text-muted-foreground">
+												{t('general.minWordCount')}
+											</Label>
+											<Input
+												type="number"
+												min={1}
+												value={globalSettings.contentQuality.minWordCount}
+												onChange={(e) => {
+													const value = Number.parseInt(e.target.value, 10)
+													if (!Number.isNaN(value) && value >= 1) {
+														setGlobalSettings((prev) => ({
+															...prev,
+															contentQuality: { ...prev.contentQuality, minWordCount: value },
+														}))
+													}
+												}}
+												className="h-8 w-24 text-xs"
+											/>
+										</div>
+										<div className="space-y-1">
+											<Label className="text-xs text-muted-foreground">
+												{t('general.minQualityScore')}
+											</Label>
+											<Input
+												type="number"
+												min={1}
+												max={10}
+												value={globalSettings.contentQuality.minScore}
+												onChange={(e) => {
+													const value = Number.parseInt(e.target.value, 10)
+													if (!Number.isNaN(value) && value >= 1 && value <= 10) {
+														setGlobalSettings((prev) => ({
+															...prev,
+															contentQuality: { ...prev.contentQuality, minScore: value },
+														}))
+													}
+												}}
+												className="h-8 w-24 text-xs"
+											/>
+										</div>
+									</div>
+								</div>
+							</div>
+						)}
 					</div>
 				</TabsContent>
 			</Tabs>

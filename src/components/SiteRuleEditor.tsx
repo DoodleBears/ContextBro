@@ -16,7 +16,13 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { ALLOWLIST_PRESETS } from '@/lib/allowlist'
 import { useLocale } from '@/lib/i18n'
-import type { ContextBroTemplate, Endpoint, SiteRule } from '@/lib/types'
+import type { ContextBroTemplate, Endpoint, RealtimeTriggers, SiteRule } from '@/lib/types'
+
+const DEFAULT_REALTIME_TRIGGERS: RealtimeTriggers = {
+	onLoad: true,
+	onSpaNavigation: true,
+	onVisibilityChange: false,
+}
 
 type IntervalUnit = 'minutes' | 'hours'
 
@@ -86,6 +92,8 @@ export function SiteRuleEditor({
 				refetchIntervalSeconds: 60,
 				dedupEnabled: true,
 				dedupWindowSeconds: 900,
+				realtimeDebounceMs: 2000,
+				realtimeTriggers: { ...DEFAULT_REALTIME_TRIGGERS },
 			},
 		])
 		setNewName('')
@@ -156,9 +164,48 @@ export function SiteRuleEditor({
 			refetchIntervalSeconds: 60,
 			dedupEnabled: true,
 			dedupWindowSeconds: 900,
+			realtimeDebounceMs: 2000,
+			realtimeTriggers: { ...DEFAULT_REALTIME_TRIGGERS },
 		}
 
 		onRulesChange([...siteRules, newRule])
+	}
+
+	const hasCatchAll = siteRules.some((r) => r.catchAll)
+
+	function addCatchAllRule() {
+		if (hasCatchAll) return
+
+		const enabledEndpointIds = endpoints.filter((e) => e.enabled).map((e) => e.id)
+		const newId = crypto.randomUUID()
+
+		onRulesChange([
+			...siteRules,
+			{
+				id: newId,
+				name: t('sites.catchAllLabel'),
+				patterns: [],
+				enabled: true,
+				endpointIds: enabledEndpointIds,
+				autoShare: true,
+				intervalMinutes: 15,
+				scheduleMode: 'realtime',
+				dwellSeconds: 10,
+				refetchEnabled: false,
+				refetchIntervalSeconds: 60,
+				dedupEnabled: true,
+				dedupWindowSeconds: 900,
+				realtimeDebounceMs: 2000,
+				realtimeTriggers: { ...DEFAULT_REALTIME_TRIGGERS },
+				catchAll: true,
+			},
+		])
+
+		requestAnimationFrame(() => {
+			document
+				.getElementById(`site-rule-${newId}`)
+				?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+		})
 	}
 
 	function handlePatternsChange(ruleId: string, text: string) {
@@ -193,6 +240,16 @@ export function SiteRuleEditor({
 							{preset.label}
 						</Button>
 					))}
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={addCatchAllRule}
+						disabled={hasCatchAll}
+						title={hasCatchAll ? t('sites.catchAllExists') : undefined}
+					>
+						<Plus className="h-3 w-3" />
+						{t('sites.catchAllLabel')}
+					</Button>
 				</div>
 			</div>
 
@@ -217,16 +274,19 @@ export function SiteRuleEditor({
 									onBlur={(e) => updateRule(rule.id, { name: e.target.value.trim() })}
 									className="flex-1 text-sm font-medium h-8"
 									placeholder={t('sites.namePlaceholder')}
+									readOnly={rule.catchAll}
 								/>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="h-7 w-7 text-muted-foreground hover:text-foreground"
-									onClick={() => cloneRule(rule)}
-									title={t('common.clone')}
-								>
-									<Copy className="h-3.5 w-3.5" />
-								</Button>
+								{!rule.catchAll && (
+									<Button
+										variant="ghost"
+										size="icon"
+										className="h-7 w-7 text-muted-foreground hover:text-foreground"
+										onClick={() => cloneRule(rule)}
+										title={t('common.clone')}
+									>
+										<Copy className="h-3.5 w-3.5" />
+									</Button>
+								)}
 								<Button
 									variant="ghost"
 									size="icon"
@@ -237,20 +297,26 @@ export function SiteRuleEditor({
 								</Button>
 							</div>
 
-							{/* Row 2: Patterns textarea */}
-							<div className="space-y-1">
-								<Label className="text-xs text-muted-foreground">
-									{t('sites.patterns')}
-								</Label>
-								<Textarea
-									value={patternsText[rule.id] ?? rule.patterns.join('\n')}
-									onChange={(e) => handlePatternsChange(rule.id, e.target.value)}
-									onBlur={() => handlePatternsBlur(rule.id)}
-									className="font-mono text-xs min-h-[60px] resize-y"
-									placeholder={t('sites.patternsPlaceholder')}
-									rows={Math.max(2, rule.patterns.length + 1)}
-								/>
-							</div>
+							{/* Row 2: Patterns textarea or catchAll description */}
+							{rule.catchAll ? (
+								<p className="text-xs text-muted-foreground italic px-0.5">
+									{t('sites.catchAllDesc')}
+								</p>
+							) : (
+								<div className="space-y-1">
+									<Label className="text-xs text-muted-foreground">
+										{t('sites.patterns')}
+									</Label>
+									<Textarea
+										value={patternsText[rule.id] ?? rule.patterns.join('\n')}
+										onChange={(e) => handlePatternsChange(rule.id, e.target.value)}
+										onBlur={() => handlePatternsBlur(rule.id)}
+										className="font-mono text-xs min-h-[60px] resize-y"
+										placeholder={t('sites.patternsPlaceholder')}
+										rows={Math.max(2, rule.patterns.length + 1)}
+									/>
+								</div>
+							)}
 
 							{/* Row 3: Template + Endpoints */}
 							<div className="grid grid-cols-2 gap-3">
@@ -332,78 +398,157 @@ export function SiteRuleEditor({
 								</div>
 								{rule.autoShare && (
 									<>
-										<Select
-											value={rule.scheduleMode || 'focused'}
-											onValueChange={(v) =>
-												updateRule(rule.id, { scheduleMode: v as 'focused' | 'any_tab' })
-											}
-										>
-											<SelectTrigger className="h-7 w-[160px] text-xs">
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="focused" textValue={t('sites.focusedTab')}>
-													<div>
-														<div>{t('sites.focusedTab')}</div>
-														<div className="text-[10px] text-muted-foreground font-normal">
-															{t('sites.focusedTabDesc')}
-														</div>
+									<Select
+										value={rule.scheduleMode || 'focused'}
+										onValueChange={(v) =>
+											updateRule(rule.id, {
+												scheduleMode: v as SiteRule['scheduleMode'],
+											})
+										}
+									>
+										<SelectTrigger className="h-7 w-[160px] text-xs">
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="realtime" textValue={t('sites.realtime')}>
+												<div>
+													<div>{t('sites.realtime')}</div>
+													<div className="text-[10px] text-muted-foreground font-normal">
+														{t('sites.realtimeDesc')}
 													</div>
-												</SelectItem>
-												<SelectItem value="any_tab" textValue={t('sites.anyTab')}>
-													<div>
-														<div>{t('sites.anyTab')}</div>
-														<div className="text-[10px] text-muted-foreground font-normal">
-															{t('sites.anyTabDesc')}
-														</div>
+												</div>
+											</SelectItem>
+											<SelectItem value="focused" textValue={t('sites.focusedTab')}>
+												<div>
+													<div>{t('sites.focusedTab')}</div>
+													<div className="text-[10px] text-muted-foreground font-normal">
+														{t('sites.focusedTabDesc')}
 													</div>
-												</SelectItem>
-											</SelectContent>
-										</Select>
+												</div>
+											</SelectItem>
+											<SelectItem value="any_tab" textValue={t('sites.anyTab')}>
+												<div>
+													<div>{t('sites.anyTab')}</div>
+													<div className="text-[10px] text-muted-foreground font-normal">
+														{t('sites.anyTabDesc')}
+													</div>
+												</div>
+											</SelectItem>
+										</SelectContent>
+									</Select>
 
-										{/* Interval — only for any_tab mode */}
-										{rule.scheduleMode === 'any_tab' && (
+									{/* Interval — only for any_tab mode */}
+									{rule.scheduleMode === 'any_tab' && (
+										<div className="flex items-center gap-1.5">
+											<span className="text-xs whitespace-nowrap">{t('sites.every')}</span>
+											<Input
+												type="number"
+												min={1}
+												value={fromMinutes(rule.intervalMinutes).value}
+												onChange={(e) => {
+													const num = Number.parseInt(e.target.value, 10)
+													if (!Number.isNaN(num) && num > 0) {
+														const unit = fromMinutes(rule.intervalMinutes).unit
+														updateRule(rule.id, {
+															intervalMinutes: Math.max(1, toMinutes(num, unit)),
+														})
+													}
+												}}
+												className="h-7 w-16 text-xs text-center"
+											/>
+											<Select
+												value={fromMinutes(rule.intervalMinutes).unit}
+												onValueChange={(newUnit) => {
+													const { value } = fromMinutes(rule.intervalMinutes)
+													updateRule(rule.id, {
+														intervalMinutes: Math.max(
+															1,
+															toMinutes(value, newUnit as IntervalUnit),
+														),
+													})
+												}}
+											>
+												<SelectTrigger className="h-7 w-[76px] text-xs">
+													<SelectValue />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="minutes">{t('sites.unitMinutes')}</SelectItem>
+													<SelectItem value="hours">{t('sites.unitHours')}</SelectItem>
+												</SelectContent>
+											</Select>
+										</div>
+									)}
+
+									{/* Realtime triggers + debounce */}
+									{rule.scheduleMode === 'realtime' && (
+										<>
 											<div className="flex items-center gap-1.5">
-												<span className="text-xs whitespace-nowrap">{t('sites.every')}</span>
+												<span className="text-xs whitespace-nowrap">
+													{t('sites.realtimeDebounce')}
+												</span>
 												<Input
 													type="number"
-													min={1}
-													value={fromMinutes(rule.intervalMinutes).value}
+													min={200}
+													step={100}
+													value={rule.realtimeDebounceMs ?? 2000}
 													onChange={(e) => {
 														const num = Number.parseInt(e.target.value, 10)
-														if (!Number.isNaN(num) && num > 0) {
-															const unit = fromMinutes(rule.intervalMinutes).unit
-															updateRule(rule.id, {
-																intervalMinutes: Math.max(1, toMinutes(num, unit)),
-															})
+														if (!Number.isNaN(num) && num >= 200) {
+															updateRule(rule.id, { realtimeDebounceMs: num })
 														}
 													}}
-													className="h-7 w-16 text-xs text-center"
+													className="h-7 w-20 text-xs text-center"
 												/>
-												<Select
-													value={fromMinutes(rule.intervalMinutes).unit}
-													onValueChange={(newUnit) => {
-														const { value } = fromMinutes(rule.intervalMinutes)
-														updateRule(rule.id, {
-															intervalMinutes: Math.max(
-																1,
-																toMinutes(value, newUnit as IntervalUnit),
-															),
-														})
-													}}
-												>
-													<SelectTrigger className="h-7 w-[76px] text-xs">
-														<SelectValue />
-													</SelectTrigger>
-													<SelectContent>
-														<SelectItem value="minutes">{t('sites.unitMinutes')}</SelectItem>
-														<SelectItem value="hours">{t('sites.unitHours')}</SelectItem>
-													</SelectContent>
-												</Select>
+												<span className="text-xs text-muted-foreground">ms</span>
 											</div>
-										)}
-									</>
-								)}
+											<div className="flex items-center gap-3">
+												<label className="flex items-center gap-1.5 text-xs">
+													<Checkbox
+														checked={rule.realtimeTriggers?.onLoad ?? true}
+														onCheckedChange={(checked) =>
+															updateRule(rule.id, {
+																realtimeTriggers: {
+																	...(rule.realtimeTriggers ?? DEFAULT_REALTIME_TRIGGERS),
+																	onLoad: !!checked,
+																},
+															})
+														}
+													/>
+													{t('sites.triggerOnLoad')}
+												</label>
+												<label className="flex items-center gap-1.5 text-xs">
+													<Checkbox
+														checked={rule.realtimeTriggers?.onSpaNavigation ?? true}
+														onCheckedChange={(checked) =>
+															updateRule(rule.id, {
+																realtimeTriggers: {
+																	...(rule.realtimeTriggers ?? DEFAULT_REALTIME_TRIGGERS),
+																	onSpaNavigation: !!checked,
+																},
+															})
+														}
+													/>
+													{t('sites.triggerOnSpa')}
+												</label>
+												<label className="flex items-center gap-1.5 text-xs">
+													<Checkbox
+														checked={rule.realtimeTriggers?.onVisibilityChange ?? false}
+														onCheckedChange={(checked) =>
+															updateRule(rule.id, {
+																realtimeTriggers: {
+																	...(rule.realtimeTriggers ?? DEFAULT_REALTIME_TRIGGERS),
+																	onVisibilityChange: !!checked,
+																},
+															})
+														}
+													/>
+													{t('sites.triggerOnVisibility')}
+												</label>
+											</div>
+										</>
+									)}
+								</>
+							)}
 
 								{/* Dwell time — only for focused mode */}
 								{rule.autoShare && rule.scheduleMode === 'focused' && (

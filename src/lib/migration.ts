@@ -1,4 +1,5 @@
 import {
+	DEFAULT_GLOBAL_SETTINGS,
 	DEFAULT_CHAT_BODY_TEMPLATE,
 	DEFAULT_LIVE_STREAM_CONFIG,
 	DEFAULT_TRANSCRIPT_BODY_TEMPLATE,
@@ -39,8 +40,7 @@ export async function migrateV1ToV2(): Promise<boolean> {
 	}))
 
 	const globalSettings: GlobalSettings = {
-		locale: 'en',
-		theme: 'system',
+		...DEFAULT_GLOBAL_SETTINGS,
 	}
 
 	await browser.storage.local.set({ siteRules, globalSettings })
@@ -257,6 +257,65 @@ export async function migrateV8ToV9(): Promise<boolean> {
 		},
 	})
 	console.debug('[migration] V8→V9: added endpoint/template fields to liveStreamConfig')
+	return true
+}
+
+/**
+ * Migrate from v10 to v11:
+ * - Add `realtimeDebounceMs` + `realtimeTriggers` to SiteRule
+ * Idempotent — skips if rules already have `realtimeDebounceMs`.
+ */
+export async function migrateV10ToV11(): Promise<boolean> {
+	const result = await browser.storage.local.get(['siteRules'])
+	const siteRules = (result.siteRules as Record<string, unknown>[]) || []
+
+	if (siteRules.length === 0) return false
+	if (siteRules[0].realtimeDebounceMs !== undefined) return false
+
+	const updatedRules = siteRules.map((r) => ({
+		...r,
+		realtimeDebounceMs: 2000,
+		realtimeTriggers: {
+			onLoad: true,
+			onSpaNavigation: true,
+			onVisibilityChange: false,
+		},
+	}))
+
+	await browser.storage.local.set({ siteRules: updatedRules })
+	console.debug(`[migration] V10→V11: added realtime fields to ${updatedRules.length} rules`)
+	return true
+}
+
+/**
+ * Migrate from v11 to v12:
+ * - Extend globalSettings with dev/contentQuality/contentCleaning defaults
+ * Idempotent — skips if all fields already exist.
+ */
+export async function migrateV11ToV12(): Promise<boolean> {
+	const result = await browser.storage.local.get(['globalSettings'])
+	const current = (result.globalSettings as Record<string, unknown> | undefined) || {}
+
+	const hasDevMode = current.devMode !== undefined
+	const hasQuality = current.contentQuality !== undefined
+	const hasCleaning = current.contentCleaning !== undefined
+	if (hasDevMode && hasQuality && hasCleaning) return false
+
+	await browser.storage.local.set({
+		globalSettings: {
+			...DEFAULT_GLOBAL_SETTINGS,
+			...current,
+			contentQuality: {
+				...DEFAULT_GLOBAL_SETTINGS.contentQuality,
+				...(current.contentQuality as Record<string, unknown> | undefined),
+			},
+			contentCleaning: {
+				...DEFAULT_GLOBAL_SETTINGS.contentCleaning,
+				...(current.contentCleaning as Record<string, unknown> | undefined),
+			},
+		},
+	})
+	console.debug('[migration] V11→V12: extended globalSettings defaults')
 	return true
 }
 

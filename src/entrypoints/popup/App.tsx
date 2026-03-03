@@ -21,6 +21,22 @@ interface PageInfo {
 }
 
 type ShareStatus = 'idle' | 'loading' | 'success' | 'error'
+interface DebugQualityInfo {
+	ok: boolean
+	score: number
+	reason: string
+	textLength: number
+	wordCount: number
+}
+interface DebugPayload {
+	contentQuality: DebugQualityInfo
+	devMode: boolean
+	markdownLinkPolicy: 'keep' | 'text_only' | 'domain_only'
+	markdownLength?: {
+		raw: number
+		cleaned: number
+	}
+}
 
 export default function App() {
 	const { t, locale } = useLocale()
@@ -35,6 +51,10 @@ export default function App() {
 	const [previewLoading, setPreviewLoading] = useState(true)
 	const [shareStatus, setShareStatus] = useState<ShareStatus>('idle')
 	const [shareMessage, setShareMessage] = useState('')
+	const [devMode, setDevMode] = useState(false)
+	const [debugQuality, setDebugQuality] = useState<DebugQualityInfo | null>(null)
+	const [debugMeta, setDebugMeta] = useState<DebugPayload | null>(null)
+	const [showDevInfo, setShowDevInfo] = useState(false)
 
 	const hasMatchedRules = matchedRules.length > 0
 
@@ -60,6 +80,9 @@ export default function App() {
 				setPreviewError(result.error)
 			} else {
 				setPreview(result?.compiled || '')
+				const debug = (result?.debug as DebugPayload | undefined) || null
+				setDebugMeta(debug)
+				setDebugQuality(debug?.contentQuality || null)
 			}
 		},
 		[selectedTemplate],
@@ -77,6 +100,7 @@ export default function App() {
 		browser.storage.local.get('globalSettings').then((result) => {
 			const settings = result.globalSettings as GlobalSettings | undefined
 			const theme = settings?.theme || 'system'
+			setDevMode(settings?.devMode ?? false)
 			applyTheme(theme)
 			sendResolvedTheme()
 			cleanup = watchSystemTheme(() => {
@@ -128,6 +152,11 @@ export default function App() {
 	useEffect(() => {
 		loadPreview()
 	}, [loadPreview])
+
+	// Re-compile once dev mode is loaded/toggled to avoid timing gaps.
+	useEffect(() => {
+		loadPreview()
+	}, [devMode, loadPreview])
 
 	async function handleShare() {
 		const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
@@ -237,7 +266,7 @@ export default function App() {
 				</div>
 			</div>
 
-			<div className="space-y-3 p-4">
+			<div className="space-y-3 p-4 max-h-[560px] overflow-y-auto">
 				{/* Page Info */}
 				{pageInfo && (
 					<div className="rounded-md border bg-muted/50 p-2">
@@ -333,6 +362,52 @@ export default function App() {
 					>
 						{shareMessage}
 					</p>
+				)}
+
+				{/* Dev diagnostics (bottom section) */}
+				{devMode && (
+					<div className="space-y-1.5 border-t pt-2">
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-7 px-0 text-xs text-muted-foreground hover:text-foreground"
+							onClick={() => setShowDevInfo((v) => !v)}
+						>
+							{t('popup.devInfo')} {showDevInfo ? '▲' : '▼'}
+						</Button>
+						{showDevInfo && (debugQuality ? (
+							<div className="rounded-md border bg-muted/20 p-2 text-xs">
+								<div className="grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
+									<span>quality.ok</span>
+									<span className="text-foreground">{String(debugQuality.ok)}</span>
+									<span>quality.score</span>
+									<span className="text-foreground">{debugQuality.score}</span>
+									<span>quality.reason</span>
+									<span className="text-foreground">{debugQuality.reason}</span>
+									<span>textLength / wordCount</span>
+									<span className="text-foreground">
+										{debugQuality.textLength} / {debugQuality.wordCount}
+									</span>
+									{debugMeta && (
+										<>
+											<span>linkPolicy</span>
+											<span className="text-foreground">{debugMeta.markdownLinkPolicy}</span>
+										</>
+									)}
+									{debugMeta?.markdownLength && (
+										<>
+											<span>md(raw→cleaned)</span>
+											<span className="text-foreground">
+												{debugMeta.markdownLength.raw} → {debugMeta.markdownLength.cleaned}
+											</span>
+										</>
+									)}
+								</div>
+							</div>
+						) : (
+							<p className="text-xs text-muted-foreground">{t('popup.devEmpty')}</p>
+						))}
+					</div>
 				)}
 			</div>
 		</div>

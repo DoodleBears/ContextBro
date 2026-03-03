@@ -17,6 +17,7 @@ export function matchesPattern(hostname: string, pattern: string): boolean {
 /**
  * Check if a URL matches any enabled site rule.
  * Returns all matching rules (a URL can match multiple rules).
+ * CatchAll rules are only returned when no pattern-based rules match.
  */
 export function matchesSiteRules(url: string, rules: SiteRule[]): SiteRule[] {
 	let hostname: string
@@ -26,8 +27,22 @@ export function matchesSiteRules(url: string, rules: SiteRule[]): SiteRule[] {
 		return []
 	}
 
-	return rules.filter(
-		(rule) => rule.enabled && rule.patterns.some((p) => matchesPattern(hostname, p)),
+	const patternMatches = rules.filter(
+		(rule) => rule.enabled && !rule.catchAll && rule.patterns.some((p) => matchesPattern(hostname, p)),
+	)
+
+	if (patternMatches.length > 0) return patternMatches
+
+	return rules.filter((rule) => rule.enabled && rule.catchAll)
+}
+
+/**
+ * Check if a hostname matches any pattern-based (non-catchAll) enabled rule.
+ * Used by scheduling modules to determine if catchAll rules should apply.
+ */
+export function isMatchedByPatternRules(hostname: string, rules: SiteRule[]): boolean {
+	return rules.some(
+		(r) => r.enabled && !r.catchAll && r.patterns.some((p) => matchesPattern(hostname, p)),
 	)
 }
 

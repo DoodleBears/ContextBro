@@ -7,9 +7,18 @@ import type {
 	SiteRule,
 } from '@/lib/types'
 
-const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
+export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
 	locale: 'en',
 	theme: 'system',
+	devMode: false,
+	contentQuality: {
+		minTextLength: 180,
+		minWordCount: 20,
+		minScore: 4,
+	},
+	contentCleaning: {
+		markdownLinkPolicy: 'text_only',
+	},
 }
 
 export const DEFAULT_CHAT_BODY_TEMPLATE = `{
@@ -72,7 +81,19 @@ export async function setSiteRules(rules: SiteRule[]): Promise<void> {
 
 export async function getGlobalSettings(): Promise<GlobalSettings> {
 	const result = await browser.storage.local.get('globalSettings')
-	return (result.globalSettings as GlobalSettings) || DEFAULT_GLOBAL_SETTINGS
+	const stored = (result.globalSettings as Partial<GlobalSettings>) || {}
+	return {
+		...DEFAULT_GLOBAL_SETTINGS,
+		...stored,
+		contentQuality: {
+			...DEFAULT_GLOBAL_SETTINGS.contentQuality,
+			...stored.contentQuality,
+		},
+		contentCleaning: {
+			...DEFAULT_GLOBAL_SETTINGS.contentCleaning,
+			...stored.contentCleaning,
+		},
+	}
 }
 
 export async function setGlobalSettings(settings: GlobalSettings): Promise<void> {

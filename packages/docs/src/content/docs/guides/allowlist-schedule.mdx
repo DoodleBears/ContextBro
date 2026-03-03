@@ -42,7 +42,7 @@ Each rule can bind to a specific template and one or more endpoints. When auto-c
 
 ## Auto-Capture
 
-Enable the **Auto-capture** toggle on a rule to have Context Bro automatically extract and send page content. Choose between two capture modes:
+Enable the **Auto-capture** toggle on a rule to have Context Bro automatically extract and send page content. Choose between three capture modes:
 
 ### When Focused (Focused Mode)
 
@@ -70,6 +70,38 @@ Best for background monitoring — keeping tabs open that you want periodically 
 | **Capture** | Extracts content from every matching tab each cycle |
 
 This mode uses the Chrome Alarms API and runs even when the tabs are in the background.
+
+### Realtime (Event-Driven Mode)
+
+Best for SPA/dynamic websites where content changes without full page reload.
+
+| Behavior | Description |
+|----------|-------------|
+| **Trigger** | Content script emits events (`load`, `spa_navigation`, `visibility_change`) |
+| **Scope** | Current tab/page matching the rule |
+| **Debounce** | Configurable `realtimeDebounceMs` to avoid duplicate bursts |
+| **Capture** | Extracts and sends after debounce |
+
+This mode is event-driven and usually more responsive than polling.
+
+## Others (Catch-All Rule)
+
+Use the **Others** preset to create a catch-all rule for websites not covered by your explicit domain rules.
+
+- Catch-all only applies when no pattern-based rule matches the hostname
+- Useful as a default fallback for unknown domains
+- Recommended to keep dedup enabled
+
+## Global Advanced Settings
+
+In **Settings → General**, enable **Advanced** to access:
+
+1. **Developer mode** (shows extraction diagnostics in popup)
+2. **Markdown URL cleaning**:
+   - Keep full URLs
+   - Keep link text only (default)
+   - Keep domain only
+3. **Content quality thresholds** for catch-all auto-capture
 
 ## Refetch
 

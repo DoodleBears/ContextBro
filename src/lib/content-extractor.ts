@@ -1,4 +1,6 @@
 import dayjs from 'dayjs'
+import { applyMarkdownCleaning } from '@/lib/markdown-cleaning'
+import type { GlobalSettings } from '@/lib/types'
 import { getDomain, sanitizeFileName } from './string-utils'
 
 export interface MetaTag {
@@ -31,8 +33,18 @@ export interface ContentResponse {
  * Build the template variables dictionary from extracted page content.
  * Keys use the {{name}} format expected by the template engine.
  */
-export function buildVariables(response: ContentResponse, url: string): Record<string, string> {
+export function buildVariables(
+	response: ContentResponse,
+	url: string,
+	globalSettings?: GlobalSettings,
+): Record<string, string> {
 	const variables: Record<string, string> = {}
+	const cleanedContent = globalSettings
+		? applyMarkdownCleaning(response.contentMarkdown || '', globalSettings)
+		: response.contentMarkdown || ''
+	const cleanedSelection = globalSettings
+		? applyMarkdownCleaning(response.selectionMarkdown || '', globalSettings)
+		: response.selectionMarkdown || ''
 
 	// Core page metadata
 	variables['{{title}}'] = response.title || ''
@@ -47,12 +59,12 @@ export function buildVariables(response: ContentResponse, url: string): Record<s
 	variables['{{wordCount}}'] = String(response.wordCount || 0)
 
 	// Content — markdown pre-converted in content script (DOM required)
-	variables['{{content}}'] = response.contentMarkdown || ''
+	variables['{{content}}'] = cleanedContent
 	variables['{{contentHtml}}'] = response.content || ''
 	variables['{{fullHtml}}'] = response.fullHtml || ''
 
 	// Selection — markdown pre-converted in content script
-	variables['{{selection}}'] = response.selectionMarkdown || ''
+	variables['{{selection}}'] = cleanedSelection
 	variables['{{selectionHtml}}'] = response.selectedHtml || ''
 
 	// Timestamps
