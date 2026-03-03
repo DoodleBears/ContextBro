@@ -1,4 +1,5 @@
 import type { ContentResponse } from '@/lib/content-extractor'
+import type { GlobalSettings } from '@/lib/types'
 
 export interface ContentQualityResult {
 	ok: boolean
@@ -8,19 +9,34 @@ export interface ContentQualityResult {
 	wordCount: number
 }
 
+interface ContentQualityConfig {
+	minTextLength: number
+	minWordCount: number
+	minScore: number
+}
+
 /**
  * Evaluate whether extracted Defuddle content is valuable enough for catchAll auto-share.
  * This mirrors the Readability-style threshold idea from the test project:
  * - basic minimum text threshold
  * - plus lightweight quality signals to avoid nav/login/noise pages
  */
-export function evaluateContentQuality(response: ContentResponse): ContentQualityResult {
+export function evaluateContentQuality(
+	response: ContentResponse,
+	config?: Partial<ContentQualityConfig>,
+): ContentQualityResult {
 	const plainText = getPlainText(response)
 	const textLength = plainText.length
 	const wordCount = response.wordCount || estimateWordCount(plainText)
+	const merged = {
+		minTextLength: 180,
+		minWordCount: 20,
+		minScore: 4,
+		...config,
+	}
 
 	// Hard reject very short/noisy pages (equivalent to Readability low-content guard)
-	if (textLength < 50 && wordCount < 20) {
+	if (textLength < 50 && wordCount < merged.minWordCount) {
 		return {
 			ok: false,
 			score: 0,
@@ -47,8 +63,8 @@ export function evaluateContentQuality(response: ContentResponse): ContentQualit
 	if ((response.author || '').trim().length > 0) score += 1
 
 	// Accept if either substantial body or enough combined confidence
-	const substantialBody = textLength >= 180
-	const confidentStructure = score >= 4
+	const substantialBody = textLength >= merged.minTextLength
+	const confidentStructure = score >= merged.minScore && wordCount >= merged.minWordCount
 	const ok = substantialBody || confidentStructure
 
 	return {
@@ -57,6 +73,14 @@ export function evaluateContentQuality(response: ContentResponse): ContentQualit
 		reason: ok ? 'valuable' : 'low_confidence',
 		textLength,
 		wordCount,
+	}
+}
+
+export function getContentQualityConfig(settings: GlobalSettings): ContentQualityConfig {
+	return {
+		minTextLength: settings.contentQuality.minTextLength,
+		minWordCount: settings.contentQuality.minWordCount,
+		minScore: settings.contentQuality.minScore,
 	}
 }
 

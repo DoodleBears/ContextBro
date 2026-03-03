@@ -1,10 +1,11 @@
 import { isMatchedByPatternRules, matchesPattern } from '@/lib/allowlist'
 import { sendToEndpoint } from '@/lib/api/send'
-import { evaluateContentQuality } from '@/lib/content-quality'
+import { evaluateContentQuality, getContentQualityConfig } from '@/lib/content-quality'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
 import { hasContentChanged } from '@/lib/dedup'
 import {
 	appendSendHistory,
+	getGlobalSettings,
 	getLastSharedAt,
 	getSiteRules,
 	setGlobalSettings as saveGlobalSettings,
@@ -86,6 +87,7 @@ async function runScheduledExtraction(deps: {
 	if (activeRules.length === 0) return
 
 	const allEndpoints = await deps.getEndpoints()
+	const globalSettings = await getGlobalSettings()
 	const lastSharedAt = await getLastSharedAt()
 	const now = Date.now()
 
@@ -142,7 +144,7 @@ async function runScheduledExtraction(deps: {
 
 				// CatchAll rule should be conservative: only auto-send valuable page content.
 				if (rule.catchAll) {
-					const quality = evaluateContentQuality(response)
+					const quality = evaluateContentQuality(response, getContentQualityConfig(globalSettings))
 					if (!quality.ok) {
 						console.debug(
 							`[scheduler] Skipping low-value catchAll content: ${tab.url} (${quality.reason}, score=${quality.score}, chars=${quality.textLength})`,
@@ -163,7 +165,7 @@ async function runScheduledExtraction(deps: {
 					continue
 				}
 
-				const variables = buildVariables(response, tab.url)
+				const variables = buildVariables(response, tab.url, globalSettings)
 				const template = await deps.getTemplate(rule.templateId)
 				const compiled = await compileTemplate(tab.id, template.contentFormat, variables, tab.url)
 

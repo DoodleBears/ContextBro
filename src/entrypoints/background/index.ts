@@ -1,6 +1,7 @@
 import type { ChatBatch, StreamInfo, TranscriptChunk } from '@/lib/adapters/types'
 import { matchesSiteRules } from '@/lib/allowlist'
 import { sendToEndpoint } from '@/lib/api/send'
+import { evaluateContentQuality, getContentQualityConfig } from '@/lib/content-quality'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
 import { initFocusedMode } from '@/lib/focused-mode'
 import { handleContentReady, initRealtimeMode } from '@/lib/realtime-mode'
@@ -15,11 +16,13 @@ import {
 	migrateV8ToV9,
 	migrateV9ToV10,
 	migrateV10ToV11,
+	migrateV11ToV12,
 } from '@/lib/migration'
 import { initScheduler, updateGlobalSettings, updateSiteRules } from '@/lib/scheduler'
 import {
 	appendSendHistory,
 	getEndpoints as getEndpointsFromStorage,
+	getGlobalSettings,
 	getLiveStreamConfig,
 	getSiteRules,
 } from '@/lib/storage'
@@ -122,6 +125,10 @@ export default defineBackground(() => {
 		})
 		.then((migrated) => {
 			if (migrated) console.debug('[background] V10→V11 migration completed')
+			return migrateV11ToV12()
+		})
+		.then((migrated) => {
+			if (migrated) console.debug('[background] V11→V12 migration completed')
 		})
 
 	// Initialize the scheduled extraction system
@@ -336,7 +343,8 @@ async function handleGetPageData(tabId: number) {
 		if (!response) return { error: 'Failed to extract page content' }
 
 		const tab = await browser.tabs.get(tabId)
-		const variables = buildVariables(response, tab.url || '')
+		const settings = await getGlobalSettings()
+		const variables = buildVariables(response, tab.url || '', settings)
 
 		return { variables }
 	} catch (error) {
@@ -355,7 +363,8 @@ async function handleShare(tabId: number, endpointId?: string, templateId?: stri
 
 		const tab = await browser.tabs.get(tabId)
 		const url = tab.url || ''
-		const variables = buildVariables(response, url)
+		const settings = await getGlobalSettings()
+		const variables = buildVariables(response, url, settings)
 
 		const template = await getTemplate(templateId)
 		const compiled = await compileTemplate(tabId, template.contentFormat, variables, url)
@@ -397,12 +406,27 @@ async function handleCompilePreview(tabId: number, templateId?: string) {
 
 		const tab = await browser.tabs.get(tabId)
 		const url = tab.url || ''
-		const variables = buildVariables(response, url)
+		const settings = await getGlobalSettings()
+		const variables = buildVariables(response, url, settings)
+		const rawMarkdownLen = (response.contentMarkdown || '').length
+		const cleanedMarkdownLen = (variables['{{content}}'] || '').length
 
 		const template = await getTemplate(templateId)
 		const compiled = await compileTemplate(tabId, template.contentFormat, variables, url)
+		const quality = evaluateContentQuality(response, getContentQualityConfig(settings))
 
-		return { compiled }
+		return {
+			compiled,
+			debug: {
+				contentQuality: quality,
+				devMode: settings.devMode,
+				markdownLinkPolicy: settings.contentCleaning.markdownLinkPolicy,
+				markdownLength: {
+					raw: rawMarkdownLen,
+					cleaned: cleanedMarkdownLen,
+				},
+			},
+		}
 	} catch (error) {
 		return { error: String(error) }
 	}

@@ -1,9 +1,15 @@
 import { isMatchedByPatternRules, matchesPattern } from '@/lib/allowlist'
 import { sendToEndpoint } from '@/lib/api/send'
-import { evaluateContentQuality } from '@/lib/content-quality'
+import { evaluateContentQuality, getContentQualityConfig } from '@/lib/content-quality'
 import { buildVariables, extractPageContent } from '@/lib/content-extractor'
 import { hasContentChanged } from '@/lib/dedup'
-import { appendSendHistory, getLastSharedAt, getSiteRules, setLastSharedAt } from '@/lib/storage'
+import {
+	appendSendHistory,
+	getGlobalSettings,
+	getLastSharedAt,
+	getSiteRules,
+	setLastSharedAt,
+} from '@/lib/storage'
 import { compileTemplate } from '@/lib/template-engine/compiler'
 import type { ContextBroTemplate, Endpoint, SiteRule } from '@/lib/types'
 
@@ -203,6 +209,7 @@ async function extractForFocusedRules(
 	deps: FocusedModeDeps,
 ): Promise<void> {
 	const allEndpoints = await deps.getEndpoints()
+	const globalSettings = await getGlobalSettings()
 	const lastSharedAt = await getLastSharedAt()
 	const now = Date.now()
 	let lastSharedUpdated = false
@@ -222,7 +229,7 @@ async function extractForFocusedRules(
 
 			// CatchAll rule should be conservative: only auto-send valuable page content.
 			if (rule.catchAll) {
-				const quality = evaluateContentQuality(response)
+				const quality = evaluateContentQuality(response, getContentQualityConfig(globalSettings))
 				if (!quality.ok) {
 					console.debug(
 						`[focused-mode] Skipping low-value catchAll content: ${url} (${quality.reason}, score=${quality.score}, chars=${quality.textLength})`,
@@ -242,7 +249,7 @@ async function extractForFocusedRules(
 				continue
 			}
 
-			const variables = buildVariables(response, url)
+			const variables = buildVariables(response, url, globalSettings)
 			const template = await deps.getTemplate(rule.templateId)
 			const compiled = await compileTemplate(tabId, template.contentFormat, variables, url)
 

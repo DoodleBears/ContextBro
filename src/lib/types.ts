@@ -52,6 +52,15 @@ export interface SiteRule {
 export interface GlobalSettings {
 	locale: 'en' | 'zh' | 'ja'
 	theme: 'system' | 'light' | 'dark'
+	devMode: boolean
+	contentQuality: {
+		minTextLength: number
+		minWordCount: number
+		minScore: number
+	}
+	contentCleaning: {
+		markdownLinkPolicy: 'keep' | 'text_only' | 'domain_only'
+	}
 }
 
 export interface LiveStreamConfig {
